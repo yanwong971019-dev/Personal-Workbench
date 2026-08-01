@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>孕期生活工作台</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f5f7fa; --card: #ffffff;
+  --primary: #ec4899; --primary-light: #f472b6; --primary-bg: #fdf2f8;
+  --text: #1f2937; --text-light: #6b7280; --border: #e5e7eb;
+  --green: #10b981; --red: #ef4444; --orange: #f59e0b; --blue: #6366f1;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+.app { display:flex; min-height:100vh; }
+.sidebar { width:220px; background:var(--card); border-right:1px solid var(--border); padding:24px 0; position:fixed; height:100vh; overflow-y:auto; z-index:10; }
+.logo { padding:0 24px 20px; font-size:18px; font-weight:700; color:var(--primary); border-bottom:1px solid var(--border); margin-bottom:16px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:12px 24px; cursor:pointer; color:var(--text-light); font-size:14px; font-weight:500; transition:all .15s; border-left:3px solid transparent; }
+.nav-item:hover { background:var(--primary-bg); color:var(--primary); }
+.nav-item.active { background:var(--primary-bg); color:var(--primary); border-left-color:var(--primary); }
+.nav-icon { font-size:18px; width:24px; text-align:center; }
+.nav-divider { padding:8px 24px 4px; font-size:11px; color:var(--text-light); text-transform:uppercase; letter-spacing:1px; font-weight:600; opacity:.6; }
+.sidebar-footer { position:absolute; bottom:16px; left:24px; right:24px; display:flex; gap:8px; }
+.btn-sm { flex:1; padding:8px; font-size:12px; border:1px solid var(--border); background:var(--card); border-radius:6px; cursor:pointer; color:var(--text-light); }
+.btn-sm:hover { border-color:var(--primary); color:var(--primary); }
+.main { flex:1; margin-left:220px; padding:32px 40px; max-width:calc(100% - 220px); }
+.page { display:none; } .page.active { display:block; }
+.page-title { font-size:24px; font-weight:700; margin-bottom:4px; }
+.page-subtitle { color:var(--text-light); font-size:14px; margin-bottom:24px; }
+.card { background:var(--card); border-radius:12px; padding:24px; box-shadow:var(--shadow); margin-bottom:20px; }
+.card-title { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+.card-title.pink { color:var(--primary); }
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:var(--card); border-radius:12px; padding:20px; box-shadow:var(--shadow); }
+.stat-card.pink-border { border-left:3px solid var(--primary); }
+.stat-label { font-size:13px; color:var(--text-light); margin-bottom:6px; }
+.stat-value { font-size:26px; font-weight:700; }
+.stat-value.green { color:var(--green); } .stat-value.red { color:var(--red); } .stat-value.primary { color:var(--primary); } .stat-value.orange { color:var(--orange); } .stat-value.blue { color:var(--blue); }
+.stat-trend { font-size:12px; color:var(--text-light); margin-top:4px; }
+.form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:12px; align-items:end; }
+.form-group { display:flex; flex-direction:column; }
+.form-group.full { grid-column:1/-1; }
+.form-group label { font-size:12px; color:var(--text-light); margin-bottom:4px; font-weight:500; }
+input,select,textarea { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; outline:none; transition:border .15s; }
+input:focus,select:focus,textarea:focus { border-color:var(--primary); }
+textarea { resize:vertical; min-height:60px; }
+.btn { padding:9px 20px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; transition:background .15s; }
+.btn:hover { background:var(--primary-light); }
+.btn.outline { background:var(--card); color:var(--primary); border:1px solid var(--primary); }
+.btn-danger { background:var(--card); color:var(--red); border:1px solid var(--border); padding:4px 10px; font-size:12px; border-radius:6px; cursor:pointer; }
+.btn-danger:hover { background:#fef2f2; border-color:var(--red); }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+th,td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+th { font-size:12px; color:var(--text-light); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+tr:hover { background:#f9fafb; }
+.empty { text-align:center; padding:40px; color:var(--text-light); font-size:14px; }
+.chart-container { position:relative; height:300px; margin-top:12px; }
+.chart-container.small { height:220px; }
+.tag { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; }
+.tag-income { background:#d1fae5; color:#065f46; } .tag-expense { background:#fee2e2; color:#991b1b; }
+.tag-breakfast { background:#fef3c7; color:#92400e; } .tag-lunch { background:#dbeafe; color:#1e40af; }
+.tag-dinner { background:#e0e7ff; color:#3730a3; } .tag-snack { background:#fce7f3; color:#9d174d; }
+.tag-pink { background:#fce7f3; color:var(--primary); }
+.tag-green { background:#d1fae5; color:#065f46; } .tag-orange { background:#fef3c7; color:#92400e; }
+.tag-red { background:#fee2e2; color:#991b1b; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:768px) {
+  .two-col { grid-template-columns:1fr; } .sidebar { width:60px; }
+  .logo { font-size:0; padding:0 0 20px; } .logo::first-letter { font-size:18px; }
+  .nav-item { padding:12px; justify-content:center; } .nav-item span:not(.nav-icon) { display:none; }
+  .nav-divider { display:none; } .main { margin-left:60px; padding:20px; max-width:calc(100% - 60px); }
+  .sidebar-footer { display:none; }
+}
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--text); color:#fff; padding:12px 24px; border-radius:8px; font-size:14px; opacity:0; transition:all .3s; z-index:1000; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+/* 孕期横幅 */
+.pregnancy-banner { background:linear-gradient(135deg,var(--primary-bg),#fce7f3); border-radius:12px; padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.pb-emoji { font-size:40px; } .pb-info { flex:1; min-width:200px; } .pb-info h3 { font-size:18px; margin-bottom:4px; } .pb-info .pb-sub { font-size:13px; color:var(--text-light); }
+.pb-countdown { text-align:center; min-width:100px; } .pb-countdown .pb-days { font-size:36px; font-weight:700; color:var(--primary); } .pb-countdown .pb-label { font-size:12px; color:var(--text-light); }
+.progress-bar-wrap { width:100%; height:12px; background:rgba(236,72,153,.15); border-radius:6px; margin-top:12px; overflow:hidden; }
+.progress-bar-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-light)); border-radius:6px; transition:width .5s ease; }
+.progress-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--text-light); margin-top:4px; }
+.postpartum-banner { background:linear-gradient(135deg,#e0f2fe,#d1fae5); border-radius:12px; padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+/* 产检卡片 */
+.checkup-card { border-left:3px solid var(--primary); padding:8px 0 8px 12px; margin-bottom:8px; }
+.checkup-card .cu-date { font-size:12px; color:var(--text-light); } .checkup-card .cu-week { font-size:13px; color:var(--primary); font-weight:500; }
+.checkup-card .cu-items { font-size:14px; margin:2px 0; } .checkup-card .cu-result { font-size:13px; color:var(--green); } .checkup-card .cu-note { font-size:12px; color:var(--text-light); }
+/* === v3 新增样式 === */
+/* 热量提醒条 */
+.alert-bar { border-radius:10px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:12px; font-size:14px; }
+.alert-bar.warn { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+.alert-bar.danger { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+.alert-bar.ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#065f46; }
+.alert-bar .alert-icon { font-size:20px; }
+/* 拍照按钮 */
+.photo-btn-wrap { display:flex; flex-direction:column; gap:4px; }
+.photo-btn { padding:8px 12px; border:1px dashed var(--border); border-radius:8px; background:#fafafa; cursor:pointer; font-size:13px; color:var(--text-light); text-align:center; transition:all .15s; }
+.photo-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
+.photo-preview { width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--border); cursor:pointer; }
+.thumb { width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer; }
+/* 食物搜索 */
+.food-search-wrap { position:relative; }
+.food-dropdown { position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--border); border-radius:8px; max-height:200px; overflow-y:auto; z-index:50; display:none; box-shadow:0 4px 12px rgba(0,0,0,.1); }
+.food-dropdown.show { display:block; }
+.food-option { padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #f3f4f6; }
+.food-option:hover { background:var(--primary-bg); }
+.food-option .fo-cat { font-size:11px; color:var(--text-light); margin-left:8px; }
+/* 标签选择 */
+.tag-select { display:flex; flex-wrap:wrap; gap:6px; }
+.tag-chip { padding:4px 10px; border:1px solid var(--border); border-radius:12px; font-size:12px; cursor:pointer; user-select:none; }
+.tag-chip.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+/* 建议卡片 */
+.suggest-card { border-radius:10px; padding:16px; margin-bottom:12px; }
+.suggest-card.green { background:#f0fdf4; border-left:3px solid var(--green); }
+.suggest-card.orange { background:#fffbeb; border-left:3px solid var(--orange); }
+.suggest-card h4 { font-size:14px; margin-bottom:8px; }
+.suggest-card ul { list-style:none; padding-left:0; }
+.suggest-card li { font-size:13px; padding:3px 0; padding-left:16px; position:relative; }
+.suggest-card li::before { content:'•'; position:absolute; left:4px; }
+/* 品牌追踪 */
+.brand-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+.brand-row:last-child { border-bottom:none; }
+.brand-info { flex:1; }
+.brand-name { font-weight:600; font-size:14px; }
+.brand-detail { font-size:12px; color:var(--text-light); }
+.brand-price { text-align:right; }
+.brand-price .bp-main { font-weight:600; color:var(--primary); }
+.brand-price .bp-compare { font-size:11px; color:var(--text-light); }
+/* 图片弹窗 */
+.img-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.8); z-index:9999; justify-content:center; align-items:center; }
+.img-modal.show { display:flex; }
+.img-modal img { max-width:90%; max-height:90%; border-radius:8px; }
+.img-modal .close-btn { position:absolute; top:20px; right:20px; color:#fff; font-size:28px; cursor:pointer; }
+/* 物品输入 */
+.item-fields { background:#f9fafb; border-radius:8px; padding:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">🌸 孕期生活台</div>
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">🏠</span><span>仪表盘</span></div>
+    <div class="nav-divider">孕期 & 产后</div>
+    <div class="nav-item" data-page="pregnancy"><span class="nav-icon">🤰</span><span id="navPregnancyLabel">孕期跟踪</span></div>
+    <div class="nav-divider">日常管理</div>
+    <div class="nav-item" data-page="weight"><span class="nav-icon">⚖️</span><span>体重记录</span></div>
+    <div class="nav-item" data-page="diet"><span class="nav-icon">🍽️</span><span>每日饮食</span></div>
+    <div class="nav-item" data-page="finance"><span class="nav-icon">💰</span><span>记账</span></div>
+    <div class="nav-item" data-page="exercise"><span class="nav-icon">🧘</span><span>运动记录</span></div>
+    <div class="sidebar-footer">
+      <button class="btn-sm" onclick="exportData()">导出</button>
+      <button class="btn-sm" onclick="document.getElementById('importFile').click()">导入</button>
+      <button class="btn-sm" onclick="showAISettings()">🤖AI</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- 仪表盘 -->
+    <div class="page active" id="page-dashboard">
+      <h1 class="page-title">仪表盘</h1>
+      <p class="page-subtitle" id="todayDate"></p>
+      <div id="dashPregnancyBanner"></div>
+      <div class="stats-grid" id="dashboardStats"></div>
+      <div class="two-col">
+        <div class="card"><div class="card-title">体重趋势</div><div class="chart-container small"><canvas id="dashWeightChart"></canvas></div></div>
+        <div class="card"><div class="card-title">本周收支</div><div class="chart-container small"><canvas id="dashFinanceChart"></canvas></div></div>
+      </div>
+      <div class="card"><div class="card-title">近 7 天热量摄入 vs 运动</div><div class="chart-container"><canvas id="dashCaloriesChart"></canvas></div></div>
+    </div>
+
+    <!-- 孕期 & 产后 -->
+    <div class="page" id="page-pregnancy">
+      <h1 class="page-title" id="pregPageTitle">孕期跟踪</h1>
+      <p class="page-subtitle" id="pregPageSub">记录孕期每一天</p>
+      <div id="pregBanner"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title pink">📋 产检记录</div>
+          <div class="form-row">
+            <div class="form-group"><label>日期</label><input type="date" id="cuDate"></div>
+            <div class="form-group"><label>孕周</label><input type="text" id="cuWeek" placeholder="如 36w+2d"></div>
+          </div>
+          <div class="form-row"><div class="form-group"><label>检查项目</label><input type="text" id="cuItems" placeholder="如 B超、胎心监护"></div></div>
+          <div class="form-row"><div class="form-group"><label>结果摘要</label><input type="text" id="cuResult" placeholder="如 一切正常"></div></div>
+          <div class="form-row"><div class="form-group"><label>医生建议</label><textarea id="cuNote" rows="2" placeholder="如 注意补铁..."></textarea></div></div>
+          <button class="btn" onclick="addCheckup()" style="margin-top:8px">记录产检</button>
+          <div id="checkupList" style="margin-top:16px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title pink">🩺 <span id="recoveryLabel">产后恢复</span></div>
+          <div id="recoverySection">
+            <p style="color:var(--text-light);font-size:13px;margin-bottom:16px">宝宝出生后自动激活产后恢复记录功能。</p>
+            <p style="color:var(--text-light);font-size:13px">预产期：<strong>2026年8月25日</strong>，还剩 <strong id="daysLeftPreg">--</strong> 天</p>
+          </div>
+          <div id="recoveryActive" style="display:none">
+            <div class="form-row">
+              <div class="form-group"><label>日期</label><input type="date" id="ppDate"></div>
+              <div class="form-group"><label>产后天数</label><input type="text" id="ppDay" readonly></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>恶露情况</label><select id="ppLochia"><option value="">--</option><option>血性恶露</option><option>浆液恶露</option><option>白色恶露</option><option>已干净</option></select></div>
+              <div class="form-group"><label>伤口恢复</label><select id="ppWound"><option value="">--</option><option>疼痛明显</option><option>轻微不适</option><option>基本恢复</option><option>完全恢复</option></select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>哺乳情况</label><select id="ppFeeding"><option value="">--</option><option>纯母乳</option><option>混合喂养</option><option>配方奶</option></select></div>
+              <div class="form-group"><label>哺乳次数/量</label><input type="text" id="ppFeedQty" placeholder="如 8次"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>情绪状态</label><select id="ppMood"><option value="">--</option><option>😊 很好</option><option>😐 一般</option><option>😢 低落</option><option>😰 焦虑</option></select></div>
+              <div class="form-group"><label>睡眠 (小时)</label><input type="number" id="ppSleep" step="0.5" placeholder="如 5"></div>
+            </div>
+            <div class="form-row"><div class="form-group full"><label>备注</label><textarea id="ppNote" rows="2"></textarea></div></div>
+            <button class="btn" onclick="addPostpartum()" style="margin-top:8px">记录</button>
+          </div>
+          <div id="recoveryList" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 体重 -->
+    <div class="page" id="page-weight">
+      <h1 class="page-title">体重记录</h1>
+      <p class="page-subtitle">追踪体重变化 <span id="weightPregHint"></span></p>
+      <div class="card"><div class="card-title">添加记录</div>
+        <div class="form-row">
+          <div class="form-group"><label>日期</label><input type="date" id="weightDate"></div>
+          <div class="form-group"><label>体重 (kg)</label><input type="number" id="weightValue" step="0.1" placeholder="如 65.5"></div>
+          <div class="form-group"><label>身高 (cm)</label><input type="number" id="heightValue" step="0.1" value="160"></div>
+          <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addWeight()">添加</button></div>
+        </div>
+      </div>
+      <div class="stats-grid" id="weightStats"></div>
+      <div class="card"><div class="card-title">体重趋势图</div><div class="chart-container"><canvas id="weightChart"></canvas></div></div>
+      <div class="card"><div class="card-title">历史记录</div>
+        <div class="table-wrap"><table id="weightTable"><thead><tr><th>日期</th><th>体重(kg)</th><th>孕前增量</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ============ 饮食模块（v3升级） ============ -->
+    <div class="page" id="page-diet">
+      <h1 class="page-title">每日饮食</h1>
+      <p class="page-subtitle">拍照记录 · 智能分析 · 控重提醒</p>
+
+      <!-- 热量提醒条 -->
+      <div id="dietAlertBar"></div>
+
+      <div class="card">
+        <div class="card-title">添加食物</div>
+        <div class="form-row">
+          <div class="form-group"><label>日期</label><input type="date" id="dietDate"></div>
+          <div class="form-group"><label>餐别</label><select id="dietMeal"><option>早餐</option><option>午餐</option><option>晚餐</option><option>加餐</option></select></div>
+          <div class="form-group">
+            <label>食物名称（输入可搜索食物库）</label>
+            <div class="food-search-wrap">
+              <input type="text" id="dietFood" placeholder="如 米饭" oninput="searchFoodLib(this.value)" onfocus="searchFoodLib(this.value)" onblur="setTimeout(()=>document.getElementById('foodDropdown').classList.remove('show'),200)">
+              <div class="food-dropdown" id="foodDropdown"></div>
+            </div>
+          </div>
+          <div class="form-group"><label>热量 (kcal)</label><input type="number" id="dietCalories" placeholder="如 200"></div>
+          <div class="form-group"><label>食物分类</label><select id="dietCategory"><option value="主食">主食</option><option value="蛋白质">蛋白质</option><option value="蔬菜">蔬菜</option><option value="水果">水果</option><option value="乳制品">乳制品</option><option value="零食">零食</option><option value="饮品">饮品</option><option value="其他">其他</option></select></div>
+          <div class="form-group"><label>份量/备注</label><input type="text" id="dietNote" placeholder="如 1小碗"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>营养标签（可多选）</label>
+            <div class="tag-select" id="dietTags">
+              <span class="tag-chip" data-tag="高糖">高糖</span>
+              <span class="tag-chip" data-tag="高脂">高脂</span>
+              <span class="tag-chip" data-tag="高纤维">高纤维</span>
+              <span class="tag-chip" data-tag="高蛋白">高蛋白</span>
+              <span class="tag-chip" data-tag="低卡">低卡</span>
+              <span class="tag-chip" data-tag="控糖友好">控糖友好</span>
+            </div>
+          </div>
+          <div class="form-group photo-btn-wrap">
+            <label>拍照留档 + AI识别</label>
+            <input type="file" id="dietPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleDietPhoto(event)">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn outline" onclick="document.getElementById('dietPhotoInput').click()">📷 拍照</button>
+              <button class="btn" id="dietAIBtn" onclick="aiRecognizeDiet()" style="display:none">🤖 AI识别</button>
+              <img id="dietPhotoPreview" class="photo-preview" style="display:none" onclick="document.getElementById('dietPhotoInput').click()">
+              <button class="btn-danger" id="dietPhotoClear" style="display:none" onclick="clearDietPhoto()">清除</button>
+            </div>
+            <div id="dietAIResult" style="font-size:13px;color:var(--primary);margin-top:4px"></div>
+          </div>
+          <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addDiet()">添加</button></div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="dietStats"></div>
+
+      <!-- 营养分析报告 -->
+      <div class="two-col">
+        <div class="card"><div class="card-title">📊 今日营养占比</div><div class="chart-container small"><canvas id="dietNutriChart"></canvas></div></div>
+        <div class="card"><div class="card-title">📈 近7天热量趋势</div><div class="chart-container small"><canvas id="dietChart"></canvas></div></div>
+      </div>
+
+      <!-- 饮食建议 -->
+      <div class="two-col">
+        <div class="suggest-card green">
+          <h4>✅ 建议多吃</h4>
+          <ul>
+            <li>🥬 绿叶蔬菜：菠菜、西兰花、油菜（高纤维、低卡）</li>
+            <li>🐟 优质蛋白：鱼虾、鸡蛋、瘦肉、豆腐</li>
+            <li>🥛 低脂乳制品：脱脂牛奶、无糖酸奶</li>
+            <li>🌾 全谷物：燕麦、糙米、全麦面包（控糖友好）</li>
+          </ul>
+        </div>
+        <div class="suggest-card orange" id="dietSuggestLess">
+          <h4>⚠️ 建议少吃 / 控糖提醒</h4>
+          <ul>
+            <li>🍰 高糖食物：蛋糕、奶茶、含糖饮料</li>
+            <li>🍚 精制主食：白米饭、白面条（升糖快）</li>
+            <li>🍟 油炸食品：薯条、炸鸡（高脂）</li>
+            <li>🍌 高糖水果：西瓜、葡萄、荔枝（孕期控糖要注意）</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 今日明细 -->
+      <div class="card"><div class="card-title">今日饮食明细</div>
+        <div class="table-wrap"><table id="dietTable"><thead><tr><th>餐别</th><th>食物</th><th>分类</th><th>热量</th><th>标签</th><th>图</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+
+      <!-- 周报 -->
+      <div class="card"><div class="card-title">📋 本周饮食分析报告</div><div id="dietWeeklyReport"></div></div>
+    </div>
+
+    <!-- ============ 记账模块（v3升级） ============ -->
+    <div class="page" id="page-finance">
+      <h1 class="page-title">记账</h1>
+      <p class="page-subtitle">物品级追踪 · 品牌对比 · 消费报告</p>
+
+      <div class="card"><div class="card-title">添加账目</div>
+        <div class="form-row">
+          <div class="form-group"><label>日期</label><input type="date" id="finDate"></div>
+          <div class="form-group"><label>类型</label><select id="finType" onchange="toggleFinItemFields()"><option value="支出">支出</option><option value="收入">收入</option></select></div>
+          <div class="form-group"><label>分类</label><select id="finCategory"></select></div>
+          <div class="form-group"><label>金额 (元)</label><input type="number" id="finAmount" step="0.01" placeholder="如 25.50"></div>
+        </div>
+        <!-- 物品明细（支出类显示） -->
+        <div class="item-fields" id="finItemFields">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-light)">📦 物品明细（一物一条）</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>产品名称（输入可搜索历史购买）</label>
+              <div class="food-search-wrap">
+                <input type="text" id="finPname" placeholder="如 纸尿裤" oninput="searchHistory(this.value,'pname','finPnameDropdown')" onfocus="searchHistory(this.value,'pname','finPnameDropdown')" onblur="setTimeout(()=>document.getElementById('finPnameDropdown').classList.remove('show'),200)">
+                <div class="food-dropdown" id="finPnameDropdown"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>品牌</label>
+              <div class="food-search-wrap">
+                <input type="text" id="finBrand" placeholder="如 帮宝适" oninput="searchHistory(this.value,'brand','finBrandDropdown')" onfocus="searchHistory(this.value,'brand','finBrandDropdown')" onblur="setTimeout(()=>document.getElementById('finBrandDropdown').classList.remove('show'),200)">
+                <div class="food-dropdown" id="finBrandDropdown"></div>
+              </div>
+            </div>
+            <div class="form-group"><label>规格</label><input type="text" id="finSpec" placeholder="如 NB码"></div>
+            <div class="form-group"><label>量/数量</label><input type="text" id="finQty" placeholder="如 1包"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>备注</label><input type="text" id="finNote" placeholder="如 超市"></div>
+          <div class="form-group photo-btn-wrap">
+            <label>拍照/截图 + AI识别</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="file" id="finPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleFinPhoto(event)">
+              <button class="btn outline" onclick="document.getElementById('finPhotoInput').click()">📷 拍照</button>
+              <button class="btn" id="finAIBtn" onclick="aiRecognizeFinance()" style="display:none">🤖 AI识别</button>
+              <img id="finPhotoPreview" class="photo-preview" style="display:none" onclick="document.getElementById('finPhotoInput').click()">
+              <button class="btn-danger" id="finPhotoClear" style="display:none" onclick="clearFinPhoto()">清除</button>
+            </div>
+            <div id="finAIResult" style="font-size:13px;color:var(--primary);margin-top:4px"></div>
+          </div>
+          <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addFinance()">添加</button></div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="financeStats"></div>
+
+      <!-- 月度消费报告 -->
+      <div class="card"><div class="card-title">📊 <span id="finReportMonth">本月</span>消费报告</div><div id="finMonthlyReport"></div></div>
+
+      <div class="two-col">
+        <div class="card"><div class="card-title">收支对比</div><div class="chart-container"><canvas id="financeBarChart"></canvas></div></div>
+        <div class="card"><div class="card-title">支出分类占比</div><div class="chart-container"><canvas id="financePieChart"></canvas></div></div>
+      </div>
+
+      <!-- 品牌追踪 -->
+      <div class="card"><div class="card-title">🏷️ 物品品牌追踪</div><div id="finBrandTracker"></div></div>
+
+      <!-- 开源节流建议 -->
+      <div class="card"><div class="card-title">💡 开源节流建议</div><div id="finSuggestions"></div></div>
+
+      <!-- 账目明细 -->
+      <div class="card"><div class="card-title">账目明细</div>
+        <div class="table-wrap"><table id="financeTable"><thead><tr><th>日期</th><th>类型</th><th>分类</th><th>物品</th><th>金额</th><th>图</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 运动 -->
+    <div class="page" id="page-exercise">
+      <h1 class="page-title">运动记录</h1>
+      <p class="page-subtitle">记录运动，保持健康活力</p>
+      <div class="card"><div class="card-title">添加运动</div>
+        <div class="form-row">
+          <div class="form-group"><label>日期</label><input type="date" id="exDate"></div>
+          <div class="form-group"><label>运动类型</label><select id="exType"><option>散步</option><option>孕妇瑜伽</option><option>快走</option><option>游泳</option><option>骑行</option><option>力量训练</option><option>瑜伽</option><option>其他</option></select></div>
+          <div class="form-group"><label>时长 (分钟)</label><input type="number" id="exDuration" placeholder="如 30"></div>
+          <div class="form-group"><label>消耗热量 (kcal)</label><input type="number" id="exCalories" placeholder="如 200"></div>
+          <div class="form-group"><label>备注</label><input type="text" id="exNote" placeholder="如 小区散步"></div>
+          <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addExercise()">添加</button></div>
+        </div>
+      </div>
+      <div class="stats-grid" id="exerciseStats"></div>
+      <div class="card"><div class="card-title">近 7 天运动消耗</div><div class="chart-container"><canvas id="exerciseChart"></canvas></div></div>
+      <div class="card"><div class="card-title">运动记录</div>
+        <div class="table-wrap"><table id="exerciseTable"><thead><tr><th>日期</th><th>类型</th><th>时长(分)</th><th>消耗(kcal)</th><th>备注</th><th></th></tr></thead><tbody></table></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="img-modal" id="imgModal" onclick="closeImgModal()"><span class="close-btn">&times;</span><img id="imgModalImg"></div>
+
+<script>
+// ========== 内置食物库 ==========
+const FOOD_LIB = [
+  // 主食
+  {name:'米饭',cal:116,cat:'主食',tags:['低卡']},{name:'小米粥',cal:46,cat:'主食',tags:['低卡','控糖友好']},
+  {name:'面条',cal:280,cat:'主食',tags:[]},{name:'馒头',cal:223,cat:'主食',tags:[]},
+  {name:'红薯',cal:86,cat:'主食',tags:['高纤维','控糖友好']},{name:'玉米',cal:86,cat:'主食',tags:['高纤维','控糖友好']},
+  {name:'燕麦片',cal:367,cat:'主食',tags:['高纤维','控糖友好']},{name:'全麦面包',cal:246,cat:'主食',tags:['高纤维','控糖友好']},
+  {name:'糙米饭',cal:112,cat:'主食',tags:['高纤维','控糖友好']},{name:'白粥',cal:46,cat:'主食',tags:['低卡']},
+  {name:'饺子',cal:250,cat:'主食',tags:[]},{name:'包子',cal:227,cat:'主食',tags:[]},
+  // 蛋白质
+  {name:'鸡蛋',cal:147,cat:'蛋白质',tags:['高蛋白']},{name:'鸡胸肉',cal:133,cat:'蛋白质',tags:['高蛋白','低卡']},
+  {name:'牛肉',cal:125,cat:'蛋白质',tags:['高蛋白']},{name:'猪瘦肉',cal:143,cat:'蛋白质',tags:['高蛋白']},
+  {name:'鱼(鲈鱼)',cal:105,cat:'蛋白质',tags:['高蛋白','低卡']},{name:'虾',cal:87,cat:'蛋白质',tags:['高蛋白','低卡']},
+  {name:'豆腐',cal:81,cat:'蛋白质',tags:['高蛋白','低卡']},{name:'豆浆',cal:31,cat:'蛋白质',tags:['低卡']},
+  {name:'排骨',cal:278,cat:'蛋白质',tags:['高脂']},{name:'鸡腿',cal:181,cat:'蛋白质',tags:['高蛋白']},
+  // 蔬菜
+  {name:'菠菜',cal:24,cat:'蔬菜',tags:['高纤维','低卡']},{name:'西兰花',cal:36,cat:'蔬菜',tags:['高纤维','低卡']},
+  {name:'番茄',cal:18,cat:'蔬菜',tags:['低卡']},{name:'黄瓜',cal:15,cat:'蔬菜',tags:['低卡']},
+  {name:'胡萝卜',cal:39,cat:'蔬菜',tags:['低卡']},{name:'白菜',cal:17,cat:'蔬菜',tags:['低卡','高纤维']},
+  {name:'生菜',cal:13,cat:'蔬菜',tags:['低卡']},{name:'茄子',cal:21,cat:'蔬菜',tags:['低卡']},
+  {name:'冬瓜',cal:11,cat:'蔬菜',tags:['低卡']},{name:'蘑菇',cal:22,cat:'蔬菜',tags:['低卡']},
+  // 水果
+  {name:'苹果',cal:52,cat:'水果',tags:['控糖友好']},{name:'香蕉',cal:89,cat:'水果',tags:['高糖']},
+  {name:'葡萄',cal:67,cat:'水果',tags:['高糖']},{name:'西瓜',cal:30,cat:'水果',tags:['高糖']},
+  {name:'橙子',cal:47,cat:'水果',tags:['控糖友好']},{name:'猕猴桃',cal:61,cat:'水果',tags:['控糖友好']},
+  {name:'草莓',cal:32,cat:'水果',tags:['低卡','控糖友好']},{name:'火龙果',cal:51,cat:'水果',tags:['控糖友好']},
+  {name:'荔枝',cal:70,cat:'水果',tags:['高糖']},{name:'芒果',cal:60,cat:'水果',tags:['高糖']},
+  // 乳制品
+  {name:'牛奶',cal:54,cat:'乳制品',tags:['高蛋白']},{name:'酸奶',cal:72,cat:'乳制品',tags:['高蛋白']},
+  {name:'脱脂牛奶',cal:35,cat:'乳制品',tags:['低卡','高蛋白']},{name:'奶酪',cal:328,cat:'乳制品',tags:['高脂','高蛋白']},
+  // 零食
+  {name:'薯片',cal:547,cat:'零食',tags:['高脂','高糖']},{name:'巧克力',cal:546,cat:'零食',tags:['高脂','高糖']},
+  {name:'饼干',cal:433,cat:'零食',tags:['高糖','高脂']},{name:'蛋糕',cal:347,cat:'零食',tags:['高糖','高脂']},
+  {name:'坚果',cal:570,cat:'零食',tags:['高脂','高蛋白']},{name:'冰淇淋',cal:127,cat:'零食',tags:['高糖','高脂']},
+  // 饮品
+  {name:'奶茶',cal:350,cat:'饮品',tags:['高糖','高脂']},{name:'果汁',cal:110,cat:'饮品',tags:['高糖']},
+  {name:'可乐',cal:43,cat:'饮品',tags:['高糖']},{name:'白开水',cal:0,cat:'饮品',tags:['低卡']},
+  {name:'柠檬水',cal:5,cat:'饮品',tags:['低卡']},{name:'豆浆(无糖)',cal:31,cat:'饮品',tags:['低卡']},
+  // 其他
+  {name:'方便面',cal:472,cat:'其他',tags:['高脂','高糖']},{name:'汉堡',cal:295,cat:'其他',tags:['高脂']},
+  {name:'披萨',cal:266,cat:'其他',tags:['高脂']},{name:'油条',cal:388,cat:'其他',tags:['高脂']},
+];
+
+// ========== 数据层 ==========
+const STORAGE_KEY = 'life_workbench_data';
+const DUE_DATE = new Date(2026, 7, 25);
+let data = loadData();
+let charts = {};
+let dietPhotoData = null;
+let finPhotoData = null;
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (!d.checkups) d.checkups = [];
+      if (!d.postpartums) d.postpartums = [];
+      if (d.prePregWeight === undefined) d.prePregWeight = null;
+      if (!d.diets) d.diets = [];
+      if (!d.finances) d.finances = [];
+      return d;
+    }
+  } catch(e) {}
+  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: null, checkups: [], postpartums: [] };
+}
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function todayStr() { const d=new Date(); const tz=d.getTimezoneOffset()*60000; return new Date(d-tz).toISOString().slice(0,10); }
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+function getLastNDays(n) { const days=[]; for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const tz=d.getTimezoneOffset()*60000;days.push(new Date(d-tz).toISOString().slice(0,10));} return days; }
+
+// 孕期计算（用纯日期差，避免 ceil 导致多算一天）
+function getPregnancyInfo() {
+  const today = new Date();
+  // 取日期部分（去掉时分秒），用 UTC 日期做差
+  const todayMid = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const dueMid = new Date(Date.UTC(DUE_DATE.getFullYear(), DUE_DATE.getMonth(), DUE_DATE.getDate()));
+  const diffMs = todayMid.getTime() - dueMid.getTime();
+  const diffDays = Math.round(diffMs / (1000*60*60*24));
+  const totalDays = 280;
+  if (diffDays >= 0) {
+    const ppDays = diffDays;
+    return { phase:'postpartum', daysPassed:ppDays, weeks:Math.floor(ppDays/7), remainDays:ppDays%7, progress:Math.min(100,(ppDays/42)*100), daysToDue:0 };
+  } else {
+    const dfc = totalDays + diffDays;
+    return { phase:'pregnancy', daysPassed:dfc, weeks:Math.floor(dfc/7), remainDays:dfc%7, progress:Math.min(100,(dfc/totalDays)*100), daysToDue:-diffDays };
+  }
+}
+function pregWeekStr(info) { return info.phase==='postpartum' ? `产后 ${info.weeks} 周${info.remainDays>0?'+'+info.remainDays+'天':''}` : `${info.weeks} 周 + ${info.remainDays} 天`; }
+
+// 孕期每日热量目标
+function getCalorieTarget() {
+  const info = getPregnancyInfo();
+  if (info.phase === 'postpartum') return info.weeks < 6 ? 2500 : 2200;
+  if (info.weeks >= 28) return 2200;
+  if (info.weeks >= 13) return 2100;
+  return 2000;
+}
+
+// ========== 图片处理 ==========
+function compressImage(file, callback, maxSize) {
+  maxSize = maxSize || 300;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > height) { if (width > maxSize) { height = height * maxSize / width; width = maxSize; } }
+      else { if (height > maxSize) { width = width * maxSize / height; height = maxSize; } }
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      callback(canvas.toDataURL('image/jpeg', 0.6));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function showImgModal(src) { document.getElementById('imgModalImg').src = src; document.getElementById('imgModal').classList.add('show'); }
+function closeImgModal() { document.getElementById('imgModal').classList.remove('show'); }
+
+// 记账拍照
+function clearFinPhoto() {
+  finPhotoData = null;
+  document.getElementById('finPhotoPreview').style.display = 'none';
+  document.getElementById('finPhotoClear').style.display = 'none';
+  document.getElementById('finPhotoInput').value = '';
+  document.getElementById('finAIBtn').style.display = 'none';
+  document.getElementById('finAIResult').textContent = '';
+}
+
+// ========== AI 识别功能 ==========
+// 配置：部署好 AI 后端后，在设置里填入后端地址
+const AI_CONFIG_KEY = 'ai_server_url';
+function getAIServerUrl() { return localStorage.getItem(AI_CONFIG_KEY) || ''; }
+function setAIServerUrl(url) { localStorage.setItem(AI_CONFIG_KEY, url); }
+
+// 饮食拍照后显示AI按钮
+function handleDietPhoto(event) {
+  const file = event.target.files[0]; if (!file) return;
+  compressImage(file, (base64) => {
+    dietPhotoData = base64;
+    const preview = document.getElementById('dietPhotoPreview');
+    preview.src = base64; preview.style.display = 'block';
+    document.getElementById('dietPhotoClear').style.display = 'inline-block';
+    document.getElementById('dietAIBtn').style.display = getAIServerUrl() ? 'inline-block' : 'none';
+    document.getElementById('dietAIResult').textContent = '';
+  });
+}
+function clearDietPhoto() {
+  dietPhotoData = null;
+  document.getElementById('dietPhotoPreview').style.display = 'none';
+  document.getElementById('dietPhotoClear').style.display = 'none';
+  document.getElementById('dietAIBtn').style.display = 'none';
+  document.getElementById('dietPhotoInput').value = '';
+  document.getElementById('dietAIResult').textContent = '';
+}
+
+// 记账拍照后显示AI按钮
+function handleFinPhoto(event) {
+  const file = event.target.files[0]; if (!file) return;
+  compressImage(file, (base64) => {
+    finPhotoData = base64;
+    const preview = document.getElementById('finPhotoPreview');
+    preview.src = base64; preview.style.display = 'block';
+    document.getElementById('finPhotoClear').style.display = 'inline-block';
+    document.getElementById('finAIBtn').style.display = getAIServerUrl() ? 'inline-block' : 'none';
+    document.getElementById('finAIResult').textContent = '';
+  });
+}
+
+// AI 识别食物
+async function aiRecognizeDiet() {
+  const serverUrl = getAIServerUrl();
+  if (!serverUrl) { showToast('请先在设置中配置AI服务地址'); return; }
+  if (!dietPhotoData) { showToast('请先拍照'); return; }
+  const btn = document.getElementById('dietAIBtn');
+  const resultEl = document.getElementById('dietAIResult');
+  btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
+  try {
+    const resp = await fetch(serverUrl + '/api/recognize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dietPhotoData, type: 'diet' })
+    });
+    const result = await resp.json();
+    if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
+    if (result.items && result.items.length > 0) {
+      const item = result.items[0];
+      document.getElementById('dietFood').value = item.food || '';
+      document.getElementById('dietCalories').value = item.calories || '';
+      if (item.category) document.getElementById('dietCategory').value = item.category;
+      if (item.tags && item.tags.length > 0) {
+        document.querySelectorAll('#dietTags .tag-chip').forEach(chip => {
+          chip.classList.toggle('active', item.tags.includes(chip.dataset.tag));
+        });
+      }
+      const advice = result.advice ? ' | 💬 ' + result.advice : '';
+      resultEl.innerHTML = `✅ 识别到: ${item.food} · ${item.calories}kcal${advice}`;
+      showToast('AI识别完成');
+    } else if (result.raw) {
+      resultEl.textContent = '⚠️ 识别结果: ' + result.raw.substring(0, 100);
+    } else {
+      resultEl.textContent = '⚠️ 未识别到食物，请手动填写';
+    }
+  } catch (err) {
+    resultEl.textContent = '❌ 请求失败: ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '🤖 AI识别';
+  }
+}
+
+// AI 识别消费单据
+async function aiRecognizeFinance() {
+  const serverUrl = getAIServerUrl();
+  if (!serverUrl) { showToast('请先在设置中配置AI服务地址'); return; }
+  if (!finPhotoData) { showToast('请先拍照'); return; }
+  const btn = document.getElementById('finAIBtn');
+  const resultEl = document.getElementById('finAIResult');
+  btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
+  try {
+    const resp = await fetch(serverUrl + '/api/recognize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: finPhotoData, type: 'finance' })
+    });
+    const result = await resp.json();
+    if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
+    if (result.items && result.items.length > 0) {
+      const item = result.items[0];
+      if (item.pname) document.getElementById('finPname').value = item.pname;
+      if (item.brand) document.getElementById('finBrand').value = item.brand;
+      if (item.spec) document.getElementById('finSpec').value = item.spec;
+      if (item.qty) document.getElementById('finQty').value = item.qty;
+      if (item.amount) document.getElementById('finAmount').value = item.amount;
+      if (item.category) {
+        const catSelect = document.getElementById('finCategory');
+        for (const opt of catSelect.options) { if (opt.value === item.category) { opt.selected = true; break; } }
+      }
+      const count = result.items.length;
+      resultEl.innerHTML = `✅ 识别到 ${count} 项，已填充第1项${result.total_amount ? ' | 总额¥' + result.total_amount : ''}`;
+      showToast('AI识别完成');
+    } else if (result.raw) {
+      resultEl.textContent = '⚠️ 识别结果: ' + result.raw.substring(0, 100);
+    } else {
+      resultEl.textContent = '⚠️ 未识别到内容，请手动填写';
+    }
+  } catch (err) {
+    resultEl.textContent = '❌ 请求失败: ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '🤖 AI识别';
+  }
+}
+
+// AI 设置弹窗
+function showAISettings() {
+  const current = getAIServerUrl();
+  const url = prompt('请输入AI服务地址（Vercel后端URL）：\n\n例如: https://your-app.vercel.app\n\n部署好AI后端后填入此处', current);
+  if (url !== null) {
+    const cleanUrl = url.trim().replace(/\/$/, '');
+    setAIServerUrl(cleanUrl);
+    if (cleanUrl) { showToast('AI服务已配置'); location.reload(); }
+    else { showToast('AI服务已清除'); location.reload(); }
+  }
+}
+function searchFoodLib(query) {
+  const dd = document.getElementById('foodDropdown');
+  if (!query.trim()) { dd.classList.remove('show'); return; }
+  const matches = FOOD_LIB.filter(f => f.name.includes(query.trim())).slice(0, 10);
+  if (matches.length === 0) { dd.classList.remove('show'); return; }
+  dd.innerHTML = matches.map(f => `<div class="food-option" onmousedown="selectFood('${f.name}',${f.cal},'${f.cat}','${f.tags.join(',')}')">${f.name}<span class="fo-cat">${f.cat} · ${f.cal}kcal</span></div>`).join('');
+  dd.classList.add('show');
+}
+function selectFood(name, cal, cat, tags) {
+  document.getElementById('dietFood').value = name;
+  document.getElementById('dietCalories').value = cal;
+  document.getElementById('dietCategory').value = cat;
+  // 设置标签
+  const tagArr = tags ? tags.split(',') : [];
+  document.querySelectorAll('#dietTags .tag-chip').forEach(chip => {
+    chip.classList.toggle('active', tagArr.includes(chip.dataset.tag));
+  });
+  document.getElementById('foodDropdown').classList.remove('show');
+}
+
+// 标签点击
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('tag-chip') && e.target.closest('#dietTags')) {
+    e.target.classList.toggle('active');
+  }
+});
+
+// 历史搜索（记账）
+function searchHistory(query, field, dropdownId) {
+  const dd = document.getElementById(dropdownId);
+  if (!query.trim()) { dd.classList.remove('show'); return; }
+  const expenses = data.finances.filter(f => f.type === '支出');
+  const seen = new Set();
+  const matches = expenses.filter(f => {
+    const val = f[field] || '';
+    if (!val || seen.has(val)) return false;
+    if (val.includes(query.trim())) { seen.add(val); return true; }
+    return false;
+  }).slice(0, 8);
+  if (matches.length === 0) { dd.classList.remove('show'); return; }
+  dd.innerHTML = matches.map(f => {
+    const val = f[field];
+    const extra = field === 'pname' ? `${f.brand||''} ${f.spec||''} ¥${f.amount}` : `${f.pname||''} ¥${f.amount}`;
+    return `<div class="food-option" onmousedown="selectHistory('${field}','${dropdownId}','${val.replace(/'/g,"\\'")}')">${val}<span class="fo-cat">${extra}</span></div>`;
+  }).join('');
+  dd.classList.add('show');
+}
+function selectHistory(field, dropdownId, val) {
+  document.getElementById(field === 'pname' ? 'finPname' : 'finBrand').value = val;
+  document.getElementById(dropdownId).classList.remove('show');
+  // 自动补全其他字段
+  if (field === 'pname') {
+    const match = data.finances.find(f => f.pname === val && f.type === '支出');
+    if (match && match.brand) document.getElementById('finBrand').value = match.brand;
+    if (match && match.spec) document.getElementById('finSpec').value = match.spec;
+  }
+}
+
+// ========== 导航 ==========
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-' + item.dataset.page).classList.add('active');
+    renderAll();
+  });
+});
+
+// ========== 孕期模块 ==========
+function addCheckup() {
+  const date=document.getElementById('cuDate').value;
+  const week=document.getElementById('cuWeek').value.trim();
+  const items=document.getElementById('cuItems').value.trim();
+  const result=document.getElementById('cuResult').value.trim();
+  const note=document.getElementById('cuNote').value.trim();
+  if(!date||!items){showToast('请填写日期和检查项目');return;}
+  data.checkups.push({id:Date.now(),date,week,items,result,note});
+  data.checkups.sort((a,b)=>b.date.localeCompare(a.date));
+  saveData();
+  document.getElementById('cuItems').value='';document.getElementById('cuResult').value='';document.getElementById('cuNote').value='';
+  showToast('产检记录已添加'); renderPregnancy();
+}
+function deleteCheckup(id){data.checkups=data.checkups.filter(c=>c.id!==id);saveData();renderPregnancy();}
+function addPostpartum() {
+  const date=document.getElementById('ppDate').value;
+  const lochia=document.getElementById('ppLochia').value;
+  const wound=document.getElementById('ppWound').value;
+  const feeding=document.getElementById('ppFeeding').value;
+  const feedQty=document.getElementById('ppFeedQty').value.trim();
+  const mood=document.getElementById('ppMood').value;
+  const sleep=parseFloat(document.getElementById('ppSleep').value);
+  const note=document.getElementById('ppNote').value.trim();
+  if(!date){showToast('请填写日期');return;}
+  const info=getPregnancyInfo();
+  data.postpartums.push({id:Date.now(),date,ppDay:info.phase==='postpartum'?info.daysPassed:0,lochia,wound,feeding,feedQty,mood,sleep:sleep||0,note});
+  data.postpartums.sort((a,b)=>b.date.localeCompare(a.date));
+  saveData();
+  ['ppLochia','ppWound','ppFeeding','ppFeedQty','ppMood','ppSleep','ppNote'].forEach(id=>document.getElementById(id).value='');
+  showToast('产后记录已添加'); renderPregnancy();
+}
+function deletePostpartum(id){data.postpartums=data.postpartums.filter(p=>p.id!==id);saveData();renderPregnancy();}
+function renderPregnancy() {
+  const info=getPregnancyInfo();
+  const banner=document.getElementById('pregBanner');
+  if(info.phase==='postpartum') {
+    document.getElementById('pregPageTitle').textContent='产后恢复';
+    document.getElementById('pregPageSub').textContent='记录产后恢复的每一天';
+    document.getElementById('navPregnancyLabel').textContent='产后恢复';
+    banner.innerHTML=`<div class="postpartum-banner"><div class="pb-emoji">👶</div><div class="pb-info"><h3>产后 ${info.weeks} 周 ${info.remainDays>0?'+'+info.remainDays+'天':''}</h3><div class="pb-sub">宝宝出生已 ${info.daysPassed} 天</div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysPassed}</div><div class="pb-label">产后天数</div></div></div>`;
+    document.getElementById('recoverySection').style.display='none';
+    document.getElementById('recoveryActive').style.display='block';
+    document.getElementById('ppDay').value=`产后 ${info.weeks} 周 + ${info.remainDays} 天`;
+  } else {
+    document.getElementById('pregPageTitle').textContent='孕期跟踪';
+    document.getElementById('pregPageSub').textContent='预产期：2026年8月25日';
+    document.getElementById('navPregnancyLabel').textContent='孕期跟踪';
+    const wl=info.weeks>=37?'已足月 ✨':info.weeks>=28?'孕晚期':info.weeks>=13?'孕中期':'孕早期';
+    banner.innerHTML=`<div class="pregnancy-banner"><div class="pb-emoji">🤰</div><div class="pb-info"><h3>${pregWeekStr(info)} · ${wl}</h3><div class="pb-sub">预产期：2026年8月25日 · 已过 ${info.daysPassed} 天</div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysToDue}</div><div class="pb-label">天 倒计时</div></div></div>`;
+    document.getElementById('recoverySection').style.display='block';
+    document.getElementById('recoveryActive').style.display='none';
+    document.getElementById('daysLeftPreg').textContent=info.daysToDue;
+  }
+  const cuList=document.getElementById('checkupList');
+  if(data.checkups.length===0){cuList.innerHTML='<p style="color:var(--text-light);font-size:13px;text-align:center;padding:20px">暂无产检记录</p>';}
+  else{cuList.innerHTML=data.checkups.map(c=>`<div class="checkup-card"><div class="cu-date">${c.date} · ${c.week||'-'}</div><div class="cu-items">📌 ${c.items}</div>${c.result?`<div class="cu-result">✅ ${c.result}</div>`:''}${c.note?`<div class="cu-note">💬 ${c.note}</div>`:''}<button class="btn-danger" onclick="deleteCheckup(${c.id})" style="margin-top:4px">删除</button></div>`).join('');}
+  const rList=document.getElementById('recoveryList');
+  if(data.postpartums.length===0){rList.innerHTML='<p style="color:var(--text-light);font-size:13px;text-align:center;padding:20px">暂无产后恢复记录</p>';}
+  else{const me={'很好':'😊','一般':'😐','低落':'😢','焦虑':'😰'};rList.innerHTML=data.postpartums.map(p=>`<div class="checkup-card" style="border-left-color:var(--green)"><div class="cu-date">${p.date} · 产后 ${p.ppDay} 天</div><div class="cu-items">${p.lochia?'恶露：'+p.lochia:''} ${p.wound?'· 伤口：'+p.wound:''}</div><div>${p.feeding?'哺乳：'+p.feeding+(p.feedQty?' ('+p.feedQty+')':''):''} ${p.mood?'· 情绪：'+(me[p.mood]||'')+p.mood:''} ${p.sleep?'· 睡眠：'+p.sleep+'h':''}</div>${p.note?`<div class="cu-note">💬 ${p.note}</div>`:''}<button class="btn-danger" onclick="deletePostpartum(${p.id})" style="margin-top:4px">删除</button></div>`).join('');}
+}
+
+// ========== 体重模块 ==========
+function addWeight() {
+  const date=document.getElementById('weightDate').value;
+  const value=parseFloat(document.getElementById('weightValue').value);
+  const height=parseFloat(document.getElementById('heightValue').value);
+  if(!date||!value){showToast('请填写日期和体重');return;}
+  if(height)data.height=height;
+  if(data.prePregWeight===null&&data.weights.length===0){const info=getPregnancyInfo();if(info.phase==='pregnancy')data.prePregWeight=value;}
+  data.weights=data.weights.filter(w=>w.date!==date);
+  data.weights.push({date,value,height:data.height});
+  data.weights.sort((a,b)=>a.date.localeCompare(b.date));
+  saveData();document.getElementById('weightValue').value='';
+  showToast('体重记录已添加');renderWeight();
+}
+function deleteWeight(date){data.weights=data.weights.filter(w=>w.date!==date);saveData();renderWeight();}
+function renderWeight() {
+  const info=getPregnancyInfo();
+  const hint=document.getElementById('weightPregHint');
+  hint.innerHTML=info.phase==='pregnancy'?`· <span style="color:var(--primary)">孕期：${pregWeekStr(info)}</span>`:`· <span style="color:var(--green)">产后：${pregWeekStr(info)}</span>`;
+  const weights=data.weights;const statsEl=document.getElementById('weightStats');
+  if(weights.length===0){statsEl.innerHTML='<div class="stat-card"><div class="stat-label">暂无记录</div></div>';}
+  else{
+    const latest=weights[weights.length-1];const first=weights[0];
+    const diff=(latest.value-first.value).toFixed(1);
+    let pregGain='';
+    if(data.prePregWeight){const g=(latest.value-data.prePregWeight).toFixed(1);pregGain=`<div class="stat-card pink-border"><div class="stat-label">孕期增重 (孕前 ${data.prePregWeight}kg)</div><div class="stat-value primary">${g>0?'+':''}${g} <span style="font-size:14px">kg</span></div><div class="stat-trend">${info.phase==='pregnancy'?'建议增重 11.5~16kg':'产后逐步恢复中'}</div></div>`;}
+    statsEl.innerHTML=`<div class="stat-card"><div class="stat-label">最新体重</div><div class="stat-value primary">${latest.value} <span style="font-size:14px">kg</span></div><div class="stat-trend">${latest.date}</div></div>${pregGain}<div class="stat-card"><div class="stat-label">总体变化</div><div class="stat-value ${diff>0?'red':'green'}">${diff>0?'+':''}${diff} <span style="font-size:14px">kg</span></div><div class="stat-trend">相比 ${first.date}</div></div><div class="stat-card"><div class="stat-label">记录数</div><div class="stat-value primary">${weights.length}</div></div>`;
+  }
+  const tbody=document.querySelector('#weightTable tbody');
+  if(weights.length===0){tbody.innerHTML='<tr><td colspan="4" class="empty">还没有记录</td></tr>';}
+  else{tbody.innerHTML=weights.slice().reverse().map(w=>{const g=data.prePregWeight?((w.value-data.prePregWeight).toFixed(1)):'-';const gs=data.prePregWeight?((w.value-data.prePregWeight>0?'+':'')+g+' kg'):'-';return `<tr><td>${w.date}</td><td>${w.value}</td><td>${gs}</td><td><button class="btn-danger" onclick="deleteWeight('${w.date}')">删除</button></td></tr>`;}).join('');}
+  if(charts.weight)charts.weight.destroy();
+  if(weights.length>0){charts.weight=new Chart(document.getElementById('weightChart'),{type:'line',data:{labels:weights.map(w=>w.date.slice(5)),datasets:[{label:'体重(kg)',data:weights.map(w=>w.value),borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.1)',fill:true,tension:0.3,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false}}}});}
+}
+
+// ========== 饮食模块 v3 ==========
+function addDiet() {
+  const date=document.getElementById('dietDate').value;
+  const meal=document.getElementById('dietMeal').value;
+  const food=document.getElementById('dietFood').value.trim();
+  const calories=parseInt(document.getElementById('dietCalories').value)||0;
+  const cat=document.getElementById('dietCategory').value;
+  const note=document.getElementById('dietNote').value.trim();
+  const tags=Array.from(document.querySelectorAll('#dietTags .tag-chip.active')).map(c=>c.dataset.tag);
+  if(!date||!food){showToast('请填写日期和食物名称');return;}
+  data.diets.push({id:Date.now(),date,meal,food,calories,note,category:cat,tags,photo:dietPhotoData});
+  saveData();
+  document.getElementById('dietFood').value='';document.getElementById('dietCalories').value='';document.getElementById('dietNote').value='';
+  document.querySelectorAll('#dietTags .tag-chip').forEach(c=>c.classList.remove('active'));
+  clearDietPhoto();
+  showToast('饮食记录已添加'); renderDiet();
+}
+function deleteDiet(id){data.diets=data.diets.filter(d=>d.id!==id);saveData();renderDiet();}
+function renderDiet() {
+  const today=document.getElementById('dietDate').value||todayStr();
+  const todayItems=data.diets.filter(d=>d.date===today);
+  const todayCalories=todayItems.reduce((s,d)=>s+d.calories,0);
+  const target=getCalorieTarget();
+  const info=getPregnancyInfo();
+  // 热量提醒条
+  const alertEl=document.getElementById('dietAlertBar');
+  if(todayCalories===0){alertEl.innerHTML='';}
+  else if(todayCalories>target+200){
+    const over=todayCalories-target;
+    alertEl.innerHTML=`<div class="alert-bar danger"><span class="alert-icon">⚠️</span><div>今日已摄入 <strong>${todayCalories} kcal</strong>，超出目标 ${target} kcal 共 <strong>${over} kcal</strong>！孕晚期控重关键期，建议下一餐减少主食、避免甜食，适当散步消耗。</div></div>`;
+  } else if(todayCalories>target){
+    alertEl.innerHTML=`<div class="alert-bar warn"><span class="alert-icon">📊</span><div>今日已摄入 <strong>${todayCalories} kcal</strong>，略超目标 ${target} kcal（${todayCalories-target} kcal），注意控制剩余餐次摄入。</div></div>`;
+  } else {
+    alertEl.innerHTML=`<div class="alert-bar ok"><span class="alert-icon">✅</span><div>今日已摄入 <strong>${todayCalories} kcal</strong> / 目标 ${target} kcal，控制良好，继续保持！剩余预算 ${target-todayCalories} kcal</div></div>`;
+  }
+  // 单餐提醒
+  const mealCal={}; todayItems.forEach(d=>{mealCal[d.meal]=(mealCal[d.meal]||0)+d.calories;});
+  for(const m in mealCal){if(mealCal[m]>800){alertEl.innerHTML+=`<div class="alert-bar warn" style="margin-top:8px"><span class="alert-icon">🍽️</span><div>${m}摄入 ${mealCal[m]} kcal，单餐偏高，建议每餐控制在 500-700 kcal。</div></div>`;}}
+
+  // 统计
+  const allCal=data.diets.reduce((s,d)=>s+d.calories,0);
+  const days=new Set(data.diets.map(d=>d.date)).size||1;
+  const weekItems=data.diets.filter(d=>getLastNDays(7).includes(d.date));
+  const weekCal=weekItems.reduce((s,d)=>s+d.calories,0);
+  document.getElementById('dietStats').innerHTML=`
+    <div class="stat-card pink-border"><div class="stat-label">今日摄入 (${today})</div><div class="stat-value ${todayCalories>target?'red':'primary'}">${todayCalories} <span style="font-size:14px">kcal</span></div><div class="stat-trend">目标 ${target} kcal</div></div>
+    <div class="stat-card"><div class="stat-label">今日条目</div><div class="stat-value orange">${todayItems.length}</div></div>
+    <div class="stat-card"><div class="stat-label">本周热量</div><div class="stat-value primary">${weekCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">日均 ${Math.round(weekCal/7)} kcal</div></div>
+    <div class="stat-card"><div class="stat-label">总记录</div><div class="stat-value primary">${data.diets.length}</div></div>`;
+
+  // 明细表格
+  const tbody=document.querySelector('#dietTable tbody');
+  if(todayItems.length===0){tbody.innerHTML='<tr><td colspan="7" class="empty">今日还没有饮食记录</td></tr>';}
+  else{
+    const mc={'早餐':'tag-breakfast','午餐':'tag-lunch','晚餐':'tag-dinner','加餐':'tag-snack'};
+    tbody.innerHTML=todayItems.map(d=>{
+      const tagHtml=(d.tags||[]).map(t=>`<span class="tag ${t==='高糖'||t==='高脂'?'tag-red':t==='低卡'||t==='控糖友好'?'tag-green':'tag-orange'}">${t}</span>`).join(' ');
+      return `<tr><td><span class="tag ${mc[d.meal]||''}">${d.meal}</span></td><td>${d.food}</td><td>${d.category||'-'}</td><td>${d.calories}</td><td>${tagHtml||'-'}</td><td>${d.photo?`<img class="thumb" src="${d.photo}" onclick="showImgModal('${d.photo}')">`:'-'}</td><td><button class="btn-danger" onclick="deleteDiet(${d.id})">删除</button></td></tr>`;
+    }).join('')+`<tr style="font-weight:600;background:#f9fafb"><td>合计</td><td></td><td></td><td>${todayCalories} kcal</td><td colspan="3"></td></tr>`;
+  }
+
+  // 营养占比饼图
+  if(charts.dietNutri)charts.dietNutri.destroy();
+  const catCal={};todayItems.forEach(d=>{catCal[d.category||'其他']=(catCal[d.category||'其他']||0)+d.calories;});
+  const catLabels=Object.keys(catCal);
+  if(catLabels.length>0){
+    charts.dietNutri=new Chart(document.getElementById('dietNutriChart'),{
+      type:'doughnut',data:{labels:catLabels,datasets:[{data:Object.values(catCal),backgroundColor:['#ec4899','#6366f1','#10b981','#f59e0b','#8b5cf6','#ef4444','#14b8a6','#84cc16']}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
+    });
+  }
+
+  // 7天热量趋势
+  if(charts.diet)charts.diet.destroy();
+  const d7=getLastNDays(7);
+  charts.diet=new Chart(document.getElementById('dietChart'),{
+    type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'摄入(kcal)',data:d7.map(d=>data.diets.filter(di=>di.date===d).reduce((s,di)=>s+di.calories,0)),backgroundColor:'#f59e0b',borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+
+  // 周报
+  renderDietWeeklyReport(weekItems, target);
+}
+
+function renderDietWeeklyReport(weekItems, target) {
+  const reportEl=document.getElementById('dietWeeklyReport');
+  const totalCal=weekItems.reduce((s,d)=>s+d.calories,0);
+  const avgCal=Math.round(totalCal/7);
+  // 分类统计
+  const catStats={};weekItems.forEach(d=>{catStats[d.category||'其他']=(catStats[d.category||'其他']||0)+d.calories;});
+  const cats=Object.entries(catStats).sort((a,b)=>b[1]-a[1]);
+  // 高糖高脂统计
+  const highSugar=weekItems.filter(d=>(d.tags||[]).includes('高糖'));
+  const highFat=weekItems.filter(d=>(d.tags||[]).includes('高脂'));
+  // 评分
+  let score='A'; let scoreColor='green';
+  const snackCal=catStats['零食']||0; const drinkCal=catStats['饮品']||0;
+  const badRatio=(snackCal+drinkCal)/totalCal;
+  if(avgCal>target+300){score='C';scoreColor='red';}
+  else if(avgCal>target+100||badRatio>0.2){score='B';scoreColor='orange';}
+  if(highSugar.length>3){score='C';scoreColor='red';}
+
+  reportEl.innerHTML=`
+    <div class="stats-grid" style="margin-bottom:12px">
+      <div class="stat-card"><div class="stat-label">本周总热量</div><div class="stat-value primary">${totalCal} <span style="font-size:14px">kcal</span></div></div>
+      <div class="stat-card"><div class="stat-label">日均热量</div><div class="stat-value ${avgCal>target?'red':'primary'}">${avgCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">目标 ${target}</div></div>
+      <div class="stat-card"><div class="stat-label">均衡度评分</div><div class="stat-value ${scoreColor==='green'?'green':scoreColor==='orange'?'orange':'red'}">${score}</div><div class="stat-trend">${score==='A'?'控制很好':score==='B'?'基本达标':'需改善'}</div></div>
+      <div class="stat-card"><div class="stat-label">高糖/高脂食物</div><div class="stat-value orange">${highSugar.length+highFat.length} <span style="font-size:14px">次</span></div><div class="stat-trend">高糖${highSugar.length} 高脂${highFat.length}</div></div>
+    </div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">📊 分类摄入排行</div>
+    <div style="font-size:13px;color:var(--text-light);margin-bottom:12px">${cats.map(([c,cal])=>`${c}:${cal}kcal(${Math.round(cal/totalCal*100)}%)`).join(' · ')}</div>
+    <div class="suggest-card ${score==='A'?'green':'orange'}" style="margin-bottom:0">
+      <h4>${score==='A'?'✅ 本周控制很好':score==='B'?'⚠️ 本周基本达标，还有提升空间':'🚨 本周需要改善'}</h4>
+      <ul>
+        ${avgCal>target?`<li>日均热量超出目标 ${avgCal-target} kcal，建议减少零食和含糖饮品</li>`:`<li>日均热量在目标范围内，继续保持</li>`}
+        ${highSugar.length>2?`<li>本周摄入高糖食物 ${highSugar.length} 次（${highSugar.map(d=>d.food).join('、')}），孕晚期控糖建议减少</li>`:''}
+        ${highFat.length>1?`<li>本周摄入高脂食物 ${highFat.length} 次，建议减少油炸食品</li>`:''}
+        ${(catStats['蔬菜']||0)<totalCal*0.15?`<li>蔬菜摄入偏少，建议每日蔬菜不少于 300g</li>`:''}
+        ${(catStats['蛋白质']||0)<totalCal*0.2?`<li>蛋白质摄入偏少，孕期需保证优质蛋白（鱼虾蛋奶豆）</li>`:''}
+        ${score==='A'?'<li>营养均衡，各品类搭配合理，继续加油！</li>':''}
+      </ul>
+    </div>`;
+}
+
+// ========== 记账模块 v3 ==========
+const FINANCE_CATEGORIES = {
+  '支出':['餐饮','交通','购物','住房','娱乐','医疗','教育','日用','母婴','其他'],
+  '收入':['工资','奖金','兼职','投资','红包','其他']
+};
+function updateFinCategories(){const t=document.getElementById('finType').value;document.getElementById('finCategory').innerHTML=FINANCE_CATEGORIES[t].map(c=>`<option value="${c}">${c}</option>`).join('');}
+function toggleFinItemFields(){
+  const type=document.getElementById('finType').value;
+  document.getElementById('finItemFields').style.display=type==='支出'?'block':'none';
+}
+function addFinance() {
+  const date=document.getElementById('finDate').value;
+  const type=document.getElementById('finType').value;
+  const category=document.getElementById('finCategory').value;
+  const amount=parseFloat(document.getElementById('finAmount').value);
+  const note=document.getElementById('finNote').value.trim();
+  if(!date||!amount){showToast('请填写日期和金额');return;}
+  const record={id:Date.now(),date,type,category,amount,note,photo:finPhotoData};
+  if(type==='支出'){
+    record.pname=document.getElementById('finPname').value.trim();
+    record.brand=document.getElementById('finBrand').value.trim();
+    record.spec=document.getElementById('finSpec').value.trim();
+    record.qty=document.getElementById('finQty').value.trim();
+  }
+  data.finances.push(record);
+  saveData();
+  document.getElementById('finAmount').value='';document.getElementById('finNote').value='';
+  document.getElementById('finPname').value='';document.getElementById('finBrand').value='';
+  document.getElementById('finSpec').value='';document.getElementById('finQty').value='';
+  clearFinPhoto();
+  showToast('账目已添加'); renderFinance();
+}
+function deleteFinance(id){data.finances=data.finances.filter(f=>f.id!==id);saveData();renderFinance();}
+function renderFinance() {
+  const now=new Date();const ym=now.toISOString().slice(0,7);
+  const lastMonth=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,7);
+  const monthItems=data.finances.filter(f=>f.date.startsWith(ym));
+  const lastMonthItems=data.finances.filter(f=>f.date.startsWith(lastMonth));
+  const income=monthItems.filter(f=>f.type==='收入').reduce((s,f)=>s+f.amount,0);
+  const expense=monthItems.filter(f=>f.type==='支出').reduce((s,f)=>s+f.amount,0);
+  const lastExpense=lastMonthItems.filter(f=>f.type==='支出').reduce((s,f)=>s+f.amount,0);
+  const expenseChange=lastExpense>0?((expense-lastExpense)/lastExpense*100).toFixed(1):0;
+
+  document.getElementById('finReportMonth').textContent=`${ym}年`;
+  document.getElementById('financeStats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">本月收入</div><div class="stat-value green">¥${income.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-label">本月支出</div><div class="stat-value red">¥${expense.toFixed(2)}</div><div class="stat-trend">${expenseChange>0?`↑${expenseChange}% vs 上月`:`↓${Math.abs(expenseChange)}% vs 上月`}</div></div>
+    <div class="stat-card"><div class="stat-label">本月结余</div><div class="stat-value ${income-expense>=0?'green':'red'}">¥${(income-expense).toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-label">本月记录</div><div class="stat-value primary">${monthItems.length}</div></div>`;
+
+  // 月度报告
+  const reportEl=document.getElementById('finMonthlyReport');
+  const expByCat={};monthItems.filter(f=>f.type==='支出').forEach(f=>{expByCat[f.category]=(expByCat[f.category]||0)+f.amount;});
+  const topCats=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  // 品牌统计
+  const brandStats={};monthItems.filter(f=>f.type==='支出'&&f.pname).forEach(f=>{
+    const key=f.pname+'|'+(f.brand||'');
+    if(!brandStats[key])brandStats[key]={pname:f.pname,brand:f.brand||'',spec:f.spec||'',total:0,count:0,prices:[]};
+    brandStats[key].total+=f.amount;brandStats[key].count++;brandStats[key].prices.push(f.amount);
+  });
+  const topBrands=Object.values(brandStats).sort((a,b)=>b.total-a.total).slice(0,5);
+  reportEl.innerHTML=`
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">📌 Top 5 消费品类</div>
+    <div style="margin-bottom:16px">${topCats.map(([c,a],i)=>`<div class="brand-row"><div class="brand-info"><div class="brand-name">${i+1}. ${c}</div></div><div class="brand-price"><div class="bp-main">¥${a.toFixed(2)}</div><div class="bp-compare">${(a/expense*100).toFixed(0)}%</div></div></div>`).join('')||'<div class="empty">暂无数据</div>'}</div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">🏷️ 最常买品牌 Top 5</div>
+    <div>${topBrands.map(b=>`<div class="brand-row"><div class="brand-info"><div class="brand-name">${b.pname} — ${b.brand}</div><div class="brand-detail">${b.spec} · 购买${b.count}次</div></div><div class="brand-price"><div class="bp-main">¥${b.total.toFixed(2)}</div><div class="bp-compare">均价¥${(b.total/b.count).toFixed(2)}</div></div></div>`).join('')||'<div class="empty">暂无数据</div>'}</div>`;
+
+  // 表格
+  const tbody=document.querySelector('#financeTable tbody');
+  if(data.finances.length===0){tbody.innerHTML='<tr><td colspan="7" class="empty">还没有账目记录</td></tr>';}
+  else{tbody.innerHTML=data.finances.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(f=>{
+    const itemStr=f.type==='支出'&&f.pname?`${f.pname}${f.brand?' / '+f.brand:''}${f.spec?' '+f.spec:''}${f.qty?' '+f.qty:''}`:'-';
+    return `<tr><td>${f.date}</td><td><span class="tag ${f.type==='收入'?'tag-income':'tag-expense'}">${f.type}</span></td><td>${f.category}</td><td style="font-size:13px">${itemStr}</td><td style="color:${f.type==='收入'?'var(--green)':'var(--red)'};font-weight:600">${f.type==='收入'?'+':'-'}¥${f.amount.toFixed(2)}</td><td>${f.photo?`<img class="thumb" src="${f.photo}" onclick="showImgModal('${f.photo}')">`:'-'}</td><td><button class="btn-danger" onclick="deleteFinance(${f.id})">删除</button></td></tr>`;
+  }).join('');}
+
+  // 柱状图
+  if(charts.finBar)charts.finBar.destroy();
+  const d7=getLastNDays(7);
+  charts.finBar=new Chart(document.getElementById('financeBarChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'收入',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='收入').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#10b981',borderRadius:6},{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='支出').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#ef4444',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
+
+  // 饼图
+  if(charts.finPie)charts.finPie.destroy();
+  const ec={};monthItems.filter(f=>f.type==='支出').forEach(f=>{ec[f.category]=(ec[f.category]||0)+f.amount;});
+  const pl=Object.keys(ec);
+  if(pl.length>0){charts.finPie=new Chart(document.getElementById('financePieChart'),{type:'doughnut',data:{labels:pl,datasets:[{data:Object.values(ec),backgroundColor:['#ec4899','#10b981','#f59e0b','#ef4444','#8b5cf6','#6366f1','#14b8a6','#f97316','#84cc16','#e11d48']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}});}
+
+  // 品牌追踪
+  renderBrandTracker();
+  // 开源节流建议
+  renderFinanceSuggestions(monthItems, lastMonthItems, expByCat, expense, lastExpense);
+}
+
+function renderBrandTracker() {
+  const trackerEl=document.getElementById('finBrandTracker');
+  const expenses=data.finances.filter(f=>f.type==='支出'&&f.pname);
+  if(expenses.length===0){trackerEl.innerHTML='<div class="empty">暂无物品记录</div>';return;}
+  // 按 pname 聚合
+  const byName={};expenses.forEach(f=>{if(!byName[f.pname])byName[f.pname]=[];byName[f.pname].push(f);});
+  const html=Object.entries(byName).sort((a,b)=>b[1].length-a[1].length).slice(0,10).map(([pname,items])=>{
+    // 按品牌分组
+    const byBrand={};items.forEach(f=>{const b=f.brand||'无品牌';if(!byBrand[b])byBrand[b]={spec:f.spec||'',total:0,count:0,prices:[],dates:[]};byBrand[b].total+=f.amount;byBrand[b].count++;byBrand[b].prices.push(f.amount);byBrand[b].dates.push(f.date);});
+    const brandHtml=Object.entries(byBrand).map(([b,info])=>{
+      const avg=(info.total/info.count).toFixed(2);
+      return `<div style="font-size:13px;padding:4px 0 4px 16px;color:var(--text-light)">${b} ${info.spec} — ¥${avg}/次 × ${info.count}次 = ¥${info.total.toFixed(2)} <span style="font-size:11px">(${info.dates[0].slice(5)}~${info.dates[info.dates.length-1].slice(5)})</span></div>`;
+    }).join('');
+    return `<div class="brand-row" style="flex-direction:column;align-items:stretch"><div class="brand-info"><div class="brand-name">📦 ${pname}</div><div class="brand-detail">共购买 ${items.length} 次</div></div>${brandHtml}</div>`;
+  }).join('');
+  trackerEl.innerHTML=html;
+}
+
+function renderFinanceSuggestions(monthItems, lastMonthItems, expByCat, expense, lastExpense) {
+  const suggEl=document.getElementById('finSuggestions');
+  const suggestions=[];
+  // 1. 环比增长
+  if(lastExpense>0){
+    const change=((expense-lastExpense)/lastExpense*100);
+    if(change>20){suggestions.push({type:'orange',icon:'⚠️',text:`本月总支出比上月多 ¥${(expense-lastExpense).toFixed(2)}（+${change.toFixed(1)}%），建议关注增长原因`});}
+    else if(change<-10){suggestions.push({type:'green',icon:'✅',text:`本月支出比上月少 ¥${(lastExpense-expense).toFixed(2)}（${change.toFixed(1)}%），控制得不错！`});}
+  }
+  // 2. 分类占比过高
+  if(expense>0){
+    const total=expense;
+    for(const [cat,amt] of Object.entries(expByCat)){
+      const ratio=amt/total*100;
+      if(ratio>30&&cat!=='住房'){suggestions.push({type:'orange',icon:'📊',text:`${cat}支出占比 ${ratio.toFixed(0)}%（¥${amt.toFixed(2)}），偏高，可考虑适当控制`});}
+    }
+    // 餐饮占比
+    const foodRatio=(expByCat['餐饮']||0)/total*100;
+    if(foodRatio>25){suggestions.push({type:'orange',icon:'🍽️',text:`餐饮支出占比 ${foodRatio.toFixed(0)}%，可尝试增加自己做饭的频率，预计每月可节省 ¥${((expByCat['餐饮']||0)*0.3).toFixed(0)}`});}
+  }
+  // 3. 同类物品品牌比价
+  const expenses=data.finances.filter(f=>f.type==='支出'&&f.pname);
+  const byName={};expenses.forEach(f=>{if(!byName[f.pname])byName[f.pname]={};const b=f.brand||'无';if(!byName[f.pname][b])byName[f.pname][b]={prices:[],spec:f.spec};byName[f.pname][b].prices.push(f.amount);});
+  for(const [pname,brands] of Object.entries(byName)){
+    const brandList=Object.entries(brands);
+    if(brandList.length>=2){
+      const avgs=brandList.map(([b,info])=>({brand:b,avg:info.prices.reduce((s,p)=>s+p,0)/info.prices.length}));
+      avgs.sort((a,b)=>a.avg-b.avg);
+      const cheapest=avgs[0],mostExpensive=avgs[avgs.length-1];
+      if(mostExpensive.avg>cheapest.avg*1.15){
+        const monthlyCount=Math.max(1,Math.round(brandList.reduce((s,[,info])=>s+info.prices.length,0)/3));
+        const save=(mostExpensive.avg-cheapest.avg)*monthlyCount;
+        suggestions.push({type:'green',icon:'💡',text:`${pname}：${cheapest.brand}（均价¥${cheapest.avg.toFixed(2)}）比${mostExpensive.brand}（¥${mostExpensive.avg.toFixed(2)}）便宜，切换可月省约 ¥${save.toFixed(0)}`});
+      }
+    }
+  }
+  // 4. 固定支出识别
+  const fixedItems={};expenses.forEach(f=>{const m=f.date.slice(0,7);const k=f.pname;if(!fixedItems[k])fixedItems[k]={months:new Set()};fixedItems[k].months.add(m);});
+  const fixed=Object.entries(fixedItems).filter(([,v])=>v.months.size>=2).map(([k])=>k);
+  if(fixed.length>0){suggestions.push({type:'green',icon:'📌',text:`识别到固定消费：${fixed.join('、')}，建议关注价格波动，可趁促销囤货`});}
+  // 5. 结余率
+  const income=monthItems.filter(f=>f.type==='收入').reduce((s,f)=>s+f.amount,0);
+  if(income>0){const saveRate=(income-expense)/income*100;if(saveRate<10)suggestions.push({type:'orange',icon:'💰',text:`本月结余率仅 ${saveRate.toFixed(1)}%，建议控制在 20% 以上作为储蓄`});}
+
+  suggEl.innerHTML=suggestions.length>0?suggestions.map(s=>`<div class="suggest-card ${s.type}"><h4>${s.icon} ${s.text}</h4></div>`).join(''):'<div class="empty">暂无建议，继续记录消费数据获取分析</div>';
+}
+
+// ========== 运动模块 ==========
+function addExercise(){const date=document.getElementById('exDate').value;const type=document.getElementById('exType').value;const duration=parseInt(document.getElementById('exDuration').value);const calories=parseInt(document.getElementById('exCalories').value);const note=document.getElementById('exNote').value.trim();if(!date||!duration){showToast('请填写日期和时长');return;}data.exercises.push({id:Date.now(),date,type,duration,calories:calories||0,note});saveData();document.getElementById('exDuration').value='';document.getElementById('exCalories').value='';document.getElementById('exNote').value='';showToast('运动记录已添加');renderExercise();}
+function deleteExercise(id){data.exercises=data.exercises.filter(e=>e.id!==id);saveData();renderExercise();}
+function renderExercise(){
+  const now=new Date();const ym=now.toISOString().slice(0,7);
+  const monthEx=data.exercises.filter(e=>e.date.startsWith(ym));
+  const md=monthEx.reduce((s,e)=>s+e.duration,0);const mc=monthEx.reduce((s,e)=>s+e.calories,0);
+  const days=new Set(data.exercises.map(e=>e.date)).size||1;
+  document.getElementById('exerciseStats').innerHTML=`<div class="stat-card"><div class="stat-label">本月运动时长</div><div class="stat-value primary">${md} <span style="font-size:14px">分钟</span></div></div><div class="stat-card"><div class="stat-label">本月消耗</div><div class="stat-value orange">${mc} <span style="font-size:14px">kcal</span></div></div><div class="stat-card"><div class="stat-label">本月次数</div><div class="stat-value primary">${monthEx.length}</div></div><div class="stat-card"><div class="stat-label">日均时长</div><div class="stat-value primary">${Math.round(data.exercises.reduce((s,e)=>s+e.duration,0)/days)} <span style="font-size:14px">分</span></div></div>`;
+  const tbody=document.querySelector('#exerciseTable tbody');
+  if(data.exercises.length===0){tbody.innerHTML='<tr><td colspan="6" class="empty">还没有运动记录</td></tr>';}
+  else{tbody.innerHTML=data.exercises.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<tr><td>${e.date}</td><td>${e.type}</td><td>${e.duration}</td><td>${e.calories}</td><td>${e.note||'-'}</td><td><button class="btn-danger" onclick="deleteExercise(${e.id})">删除</button></td></tr>`).join('');}
+  if(charts.exercise)charts.exercise.destroy();
+  const d7=getLastNDays(7);
+  charts.exercise=new Chart(document.getElementById('exerciseChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'消耗(kcal)',data:d7.map(d=>data.exercises.filter(e=>e.date===d).reduce((s,e)=>s+e.calories,0)),backgroundColor:'#10b981',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+}
+
+// ========== 仪表盘 ==========
+function renderDashboard(){
+  const today=todayStr();const info=getPregnancyInfo();
+  document.getElementById('todayDate').textContent=`今天是 ${today}`;
+  const banner=document.getElementById('dashPregnancyBanner');
+  if(info.phase==='postpartum'){
+    banner.innerHTML=`<div class="postpartum-banner"><div class="pb-emoji">👶</div><div class="pb-info"><h3>产后 ${info.weeks} 周 ${info.remainDays>0?'+'+info.remainDays+'天':''} · 宝宝已出生 ${info.daysPassed} 天</h3><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysPassed}</div><div class="pb-label">产后天数</div></div></div>`;
+  } else {
+    const wl=info.weeks>=37?'已足月 ✨':info.weeks>=28?'孕晚期':info.weeks>=13?'孕中期':'孕早期';
+    banner.innerHTML=`<div class="pregnancy-banner"><div class="pb-emoji">🤰</div><div class="pb-info"><h3>${pregWeekStr(info)} · ${wl}</h3><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysToDue}</div><div class="pb-label">天 倒计时</div></div></div>`;
+  }
+  const latestWeight=data.weights.length>0?data.weights[data.weights.length-1]:null;
+  const todayDiet=data.diets.filter(d=>d.date===today);
+  const todayCal=todayDiet.reduce((s,d)=>s+d.calories,0);
+  const todayEx=data.exercises.filter(e=>e.date===today);
+  const todayExCal=todayEx.reduce((s,e)=>s+e.calories,0);
+  const ym=new Date().toISOString().slice(0,7);
+  const monthExp=data.finances.filter(f=>f.date.startsWith(ym)&&f.type==='支出').reduce((s,f)=>s+f.amount,0);
+  const target=getCalorieTarget();
+  const lastCu=data.checkups.length>0?data.checkups[0]:null;
+  document.getElementById('dashboardStats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">最新体重</div><div class="stat-value primary">${latestWeight?latestWeight.value+' kg':'-'}</div><div class="stat-trend">${latestWeight?latestWeight.date:'暂无'}</div></div>
+    <div class="stat-card pink-border"><div class="stat-label">今日摄入 / 目标</div><div class="stat-value ${todayCal>target?'red':'orange'}">${todayCal} / ${target}</div><div class="stat-trend">${todayCal>target?'已超量':'控制中'} · ${todayDiet.length}条</div></div>
+    <div class="stat-card"><div class="stat-label">今日运动消耗</div><div class="stat-value green">${todayExCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">${todayEx.length} 次运动</div></div>
+    <div class="stat-card"><div class="stat-label">本月支出</div><div class="stat-value red">¥${monthExp.toFixed(2)}</div></div>`;
+  if(charts.dashWeight)charts.dashWeight.destroy();
+  if(data.weights.length>0){charts.dashWeight=new Chart(document.getElementById('dashWeightChart'),{type:'line',data:{labels:data.weights.map(w=>w.date.slice(5)),datasets:[{label:'体重(kg)',data:data.weights.map(w=>w.value),borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.1)',fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});}
+  if(charts.dashFin)charts.dashFin.destroy();
+  const d7=getLastNDays(7);
+  charts.dashFin=new Chart(document.getElementById('dashFinanceChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'收入',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='收入').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#10b981',borderRadius:6},{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='支出').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#ef4444',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
+  if(charts.dashCal)charts.dashCal.destroy();
+  charts.dashCal=new Chart(document.getElementById('dashCaloriesChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'摄入(kcal)',data:d7.map(d=>data.diets.filter(di=>di.date===d).reduce((s,di)=>s+di.calories,0)),backgroundColor:'#f59e0b',borderRadius:6},{label:'运动消耗(kcal)',data:d7.map(d=>data.exercises.filter(e=>e.date===d).reduce((s,e)=>s+e.calories,0)),backgroundColor:'#10b981',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
+}
+
+// ========== 导出/导入 ==========
+function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`孕期生活台备份_${todayStr()}.json`;a.click();URL.revokeObjectURL(url);showToast('数据已导出');}
+function importData(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(e)=>{try{data=JSON.parse(e.target.result);if(!data.checkups)data.checkups=[];if(!data.postpartums)data.postpartums=[];if(data.prePregWeight===undefined)data.prePregWeight=null;saveData();renderAll();showToast('数据导入成功');}catch{showToast('导入失败：文件格式不正确');}};reader.readAsText(file);event.target.value='';}
+
+// ========== 渲染全部 ==========
+function renderAll(){renderDashboard();renderPregnancy();renderWeight();renderDiet();renderFinance();renderExercise();}
+
+// 初始化
+const today=todayStr();
+['weightDate','dietDate','finDate','exDate','cuDate','ppDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
+updateFinCategories();
+toggleFinItemFields();
+renderAll();
+</script>
+</body>
+</html>
