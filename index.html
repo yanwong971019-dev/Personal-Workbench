@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>孕期生活工作台</title>
+<title>个人生活工作台</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
@@ -142,7 +142,7 @@ tr:hover { background:#f9fafb; }
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="logo">🌸 孕期生活台</div>
+    <div class="logo">🌸 个人生活台</div>
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">🏠</span><span>仪表盘</span></div>
     <div class="nav-divider">孕期 & 产后</div>
     <div class="nav-item" data-page="pregnancy"><span class="nav-icon">🤰</span><span id="navPregnancyLabel">孕期跟踪</span></div>
@@ -1191,7 +1191,7 @@ function renderDashboard(){
 }
 
 // ========== 导出/导入 ==========
-function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`孕期生活台备份_${todayStr()}.json`;a.click();URL.revokeObjectURL(url);showToast('数据已导出');}
+function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`个人生活台备份_${todayStr()}.json`;a.click();URL.revokeObjectURL(url);showToast('数据已导出');}
 function importData(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(e)=>{try{data=JSON.parse(e.target.result);if(!data.checkups)data.checkups=[];if(!data.postpartums)data.postpartums=[];if(data.prePregWeight===undefined)data.prePregWeight=null;saveData();renderAll();showToast('数据导入成功');}catch{showToast('导入失败：文件格式不正确');}};reader.readAsText(file);event.target.value='';}
 
 // ========== 渲染全部 ==========
