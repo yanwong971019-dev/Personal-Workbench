@@ -5,58 +5,88 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>个人生活工作台</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f5f7fa; --card: #ffffff;
-  --primary: #ec4899; --primary-light: #f472b6; --primary-bg: #fdf2f8;
-  --text: #1f2937; --text-light: #6b7280; --border: #e5e7eb;
-  --green: #10b981; --red: #ef4444; --orange: #f59e0b; --blue: #6366f1;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  /* 背景层 - 暖米色系 */
+  --bg: #faf6f3; --bg-secondary: #f5ede7; --card: #ffffff;
+  /* 主色 - 珊瑚粉橙 */
+  --primary: #e8806b; --primary-light: #f0a092; --primary-bg: #fdf2ee;
+  --primary-gradient: linear-gradient(135deg, #f9a084, #e8806b);
+  /* 辅色 */
+  --secondary: #7e9b8e; --secondary-bg: #eef4f1; --accent: #d4a574;
+  /* 文字 */
+  --text: #3d2e27; --text-light: #8a7a72; --text-muted: #b0a39c;
+  /* 边框 */
+  --border: #f0e6e0; --divider: #f5ede7;
+  /* 语义色 - 柔和 */
+  --green: #6b9b7e; --red: #d97a6b; --orange: #e8a857; --blue: #7b9bc4;
+  /* 阴影 - 暖色 */
+  --shadow: 0 2px 8px rgba(180,140,120,0.08), 0 1px 3px rgba(180,140,120,0.05);
+  --shadow-lg: 0 8px 24px rgba(180,140,120,0.12), 0 2px 8px rgba(180,140,120,0.06);
+  /* 圆角 */
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 24px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+.num-font { font-family:'Nunito',sans-serif; }
 .app { display:flex; min-height:100vh; }
-.sidebar { width:220px; background:var(--card); border-right:1px solid var(--border); padding:24px 0; position:fixed; height:100vh; overflow-y:auto; z-index:10; }
-.logo { padding:0 24px 20px; font-size:18px; font-weight:700; color:var(--primary); border-bottom:1px solid var(--border); margin-bottom:16px; }
-.nav-item { display:flex; align-items:center; gap:12px; padding:12px 24px; cursor:pointer; color:var(--text-light); font-size:14px; font-weight:500; transition:all .15s; border-left:3px solid transparent; }
-.nav-item:hover { background:var(--primary-bg); color:var(--primary); }
-.nav-item.active { background:var(--primary-bg); color:var(--primary); border-left-color:var(--primary); }
+/* 侧边栏 */
+.sidebar { width:220px; background:var(--bg-secondary); border-right:1px solid var(--border); padding:24px 0; position:fixed; height:100vh; overflow-y:auto; z-index:10; }
+.logo { padding:0 24px 20px; font-size:18px; font-weight:800; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.logo-icon { width:36px; height:36px; border-radius:50%; background:var(--primary-gradient); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 20px; margin:2px 12px; cursor:pointer; color:var(--text-light); font-size:14px; font-weight:500; transition:all .2s; border-radius:var(--radius-md); }
+.nav-item:hover { background:var(--primary-bg); color:var(--primary); transform:translateX(2px); }
+.nav-item.active { background:var(--primary-gradient); color:#fff; box-shadow:0 4px 12px rgba(232,128,107,0.3); }
 .nav-icon { font-size:18px; width:24px; text-align:center; }
-.nav-divider { padding:8px 24px 4px; font-size:11px; color:var(--text-light); text-transform:uppercase; letter-spacing:1px; font-weight:600; opacity:.6; }
+.nav-divider { padding:12px 24px 4px; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; font-weight:600; }
 .sidebar-footer { position:absolute; bottom:16px; left:24px; right:24px; display:flex; gap:8px; }
-.btn-sm { flex:1; padding:8px; font-size:12px; border:1px solid var(--border); background:var(--card); border-radius:6px; cursor:pointer; color:var(--text-light); }
+.btn-sm { flex:1; padding:8px; font-size:12px; border:1px solid var(--border); background:var(--card); border-radius:var(--radius-sm); cursor:pointer; color:var(--text-light); }
 .btn-sm:hover { border-color:var(--primary); color:var(--primary); }
 .main { flex:1; margin-left:220px; padding:32px 40px; max-width:calc(100% - 220px); }
-.page { display:none; } .page.active { display:block; }
-.page-title { font-size:24px; font-weight:700; margin-bottom:4px; }
+/* 页面切换动画 */
+.page { display:none; } .page.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.page-title { font-size:24px; font-weight:800; margin-bottom:4px; }
 .page-subtitle { color:var(--text-light); font-size:14px; margin-bottom:24px; }
-.card { background:var(--card); border-radius:12px; padding:24px; box-shadow:var(--shadow); margin-bottom:20px; }
-.card-title { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+/* 卡片 */
+.card { background:var(--card); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow); margin-bottom:20px; transition:transform .2s, box-shadow .2s; }
+.card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.card-title { font-size:16px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .card-title.pink { color:var(--primary); }
+/* 统计卡片 */
 .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
-.stat-card { background:var(--card); border-radius:12px; padding:20px; box-shadow:var(--shadow); }
-.stat-card.pink-border { border-left:3px solid var(--primary); }
+.stat-card { background:var(--card); border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow); transition:transform .2s; position:relative; overflow:hidden; }
+.stat-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.stat-card.pink-border { border-left:4px solid var(--primary); }
+.stat-card .stat-icon { position:absolute; top:16px; right:16px; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; opacity:.8; }
 .stat-label { font-size:13px; color:var(--text-light); margin-bottom:6px; }
-.stat-value { font-size:26px; font-weight:700; }
+.stat-value { font-size:26px; font-weight:800; font-family:'Nunito',sans-serif; }
 .stat-value.green { color:var(--green); } .stat-value.red { color:var(--red); } .stat-value.primary { color:var(--primary); } .stat-value.orange { color:var(--orange); } .stat-value.blue { color:var(--blue); }
 .stat-trend { font-size:12px; color:var(--text-light); margin-top:4px; }
+/* 表单 */
 .form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:12px; align-items:end; }
 .form-group { display:flex; flex-direction:column; }
 .form-group.full { grid-column:1/-1; }
 .form-group label { font-size:12px; color:var(--text-light); margin-bottom:4px; font-weight:500; }
-input,select,textarea { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; outline:none; transition:border .15s; }
-input:focus,select:focus,textarea:focus { border-color:var(--primary); }
+input,select,textarea { padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius-md); font-size:14px; font-family:inherit; outline:none; background:#fafafa; transition:border .2s, box-shadow .2s; }
+input:focus,select:focus,textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(232,128,107,0.1); }
 textarea { resize:vertical; min-height:60px; }
-.btn { padding:9px 20px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; transition:background .15s; }
-.btn:hover { background:var(--primary-light); }
-.btn.outline { background:var(--card); color:var(--primary); border:1px solid var(--primary); }
-.btn-danger { background:var(--card); color:var(--red); border:1px solid var(--border); padding:4px 10px; font-size:12px; border-radius:6px; cursor:pointer; }
-.btn-danger:hover { background:#fef2f2; border-color:var(--red); }
+/* 按钮 */
+.btn { padding:10px 22px; background:var(--primary-gradient); color:#fff; border:none; border-radius:20px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; box-shadow:0 4px 12px rgba(232,128,107,0.25); }
+.btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(232,128,107,0.35); }
+.btn:active { transform:translateY(0); }
+.btn.outline { background:var(--card); color:var(--primary); border:1px solid var(--primary); box-shadow:none; }
+.btn.outline:hover { background:var(--primary-bg); }
+.btn-danger { background:var(--card); color:var(--red); border:1px solid var(--border); padding:4px 10px; font-size:12px; border-radius:var(--radius-sm); cursor:pointer; }
+.btn-danger:hover { background:#fdf2ee; border-color:var(--red); }
+/* 表格 */
 .table-wrap { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; font-size:14px; }
-th,td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+th,td { padding:12px; text-align:left; border-bottom:1px solid var(--divider); }
 th { font-size:12px; color:var(--text-light); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-tr:hover { background:#f9fafb; }
+tr:hover { background:var(--primary-bg); }
 .empty { text-align:center; padding:40px; color:var(--text-light); font-size:14px; }
 .chart-container { position:relative; height:300px; margin-top:12px; }
 .chart-container.small { height:220px; }
@@ -64,27 +94,50 @@ tr:hover { background:#f9fafb; }
 .tag-income { background:#d1fae5; color:#065f46; } .tag-expense { background:#fee2e2; color:#991b1b; }
 .tag-breakfast { background:#fef3c7; color:#92400e; } .tag-lunch { background:#dbeafe; color:#1e40af; }
 .tag-dinner { background:#e0e7ff; color:#3730a3; } .tag-snack { background:#fce7f3; color:#9d174d; }
-.tag-pink { background:#fce7f3; color:var(--primary); }
+.tag-pink { background:#fdf2ee; color:var(--primary); }
 .tag-green { background:#d1fae5; color:#065f46; } .tag-orange { background:#fef3c7; color:#92400e; }
 .tag-red { background:#fee2e2; color:#991b1b; }
 .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+/* 底部 Tab 栏（手机端） */
+.bottom-tab-bar { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--border); padding:8px 0 calc(8px + env(safe-area-inset-bottom)); z-index:100; box-shadow:0 -2px 10px rgba(0,0,0,0.05); }
+.bottom-tab { display:flex; flex-direction:column; align-items:center; gap:2px; flex:1; cursor:pointer; color:var(--text-muted); font-size:10px; font-weight:500; padding:4px 0; transition:color .2s; position:relative; }
+.bottom-tab .bt-icon { font-size:22px; }
+.bottom-tab.active { color:var(--primary); }
+.bottom-tab.active::before { content:''; position:absolute; top:0; width:24px; height:3px; border-radius:2px; background:var(--primary-gradient); }
+/* 响应式 */
 @media (max-width:768px) {
-  .two-col { grid-template-columns:1fr; } .sidebar { width:60px; }
-  .logo { font-size:0; padding:0 0 20px; } .logo::first-letter { font-size:18px; }
-  .nav-item { padding:12px; justify-content:center; } .nav-item span:not(.nav-icon) { display:none; }
-  .nav-divider { display:none; } .main { margin-left:60px; padding:20px; max-width:calc(100% - 60px); }
+  .two-col { grid-template-columns:1fr; }
+  .sidebar { display:none; }
+  .main { margin-left:0; padding:16px 16px 80px; max-width:100%; }
+  .bottom-tab-bar { display:flex; }
+  .stats-grid { grid-template-columns:1fr 1fr; gap:12px; }
+  .stat-card { padding:16px; }
+  .stat-value { font-size:20px; }
+  .card { padding:16px; border-radius:var(--radius-md); }
+  .page-title { font-size:20px; }
+  .form-row { grid-template-columns:1fr; }
+}
+@media (min-width:769px) and (max-width:1024px) {
+  .sidebar { width:60px; }
+  .logo { font-size:0; padding:0 0 20px; justify-content:center; }
+  .logo-icon { margin:0 auto; }
+  .nav-item { padding:12px; justify-content:center; }
+  .nav-item span:not(.nav-icon) { display:none; }
+  .nav-divider { display:none; }
+  .main { margin-left:60px; padding:24px; max-width:calc(100% - 60px); }
   .sidebar-footer { display:none; }
 }
-.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--text); color:#fff; padding:12px 24px; border-radius:8px; font-size:14px; opacity:0; transition:all .3s; z-index:1000; }
+/* Toast */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--text); color:#fff; padding:12px 24px; border-radius:20px; font-size:14px; opacity:0; transition:all .3s; z-index:1000; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 /* 孕期横幅 */
-.pregnancy-banner { background:linear-gradient(135deg,var(--primary-bg),#fce7f3); border-radius:12px; padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.pregnancy-banner { background:linear-gradient(135deg,var(--primary-bg),#fce7df); border-radius:var(--radius-lg); padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
 .pb-emoji { font-size:40px; } .pb-info { flex:1; min-width:200px; } .pb-info h3 { font-size:18px; margin-bottom:4px; } .pb-info .pb-sub { font-size:13px; color:var(--text-light); }
-.pb-countdown { text-align:center; min-width:100px; } .pb-countdown .pb-days { font-size:36px; font-weight:700; color:var(--primary); } .pb-countdown .pb-label { font-size:12px; color:var(--text-light); }
-.progress-bar-wrap { width:100%; height:12px; background:rgba(236,72,153,.15); border-radius:6px; margin-top:12px; overflow:hidden; }
-.progress-bar-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-light)); border-radius:6px; transition:width .5s ease; }
+.pb-countdown { text-align:center; min-width:100px; } .pb-countdown .pb-days { font-size:36px; font-weight:800; color:var(--primary); font-family:'Nunito',sans-serif; } .pb-countdown .pb-label { font-size:12px; color:var(--text-light); }
+.progress-bar-wrap { width:100%; height:12px; background:rgba(232,128,107,.15); border-radius:6px; margin-top:12px; overflow:hidden; }
+.progress-bar-fill { height:100%; background:var(--primary-gradient); border-radius:6px; transition:width .5s ease; }
 .progress-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--text-light); margin-top:4px; }
-.postpartum-banner { background:linear-gradient(135deg,#e0f2fe,#d1fae5); border-radius:12px; padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.postpartum-banner { background:linear-gradient(135deg,#e8f0eb,#e0f2fe); border-radius:var(--radius-lg); padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
 /* 产检卡片 */
 .checkup-card { border-left:3px solid var(--primary); padding:8px 0 8px 12px; margin-bottom:8px; }
 .checkup-card .cu-date { font-size:12px; color:var(--text-light); } .checkup-card .cu-week { font-size:13px; color:var(--primary); font-weight:500; }
@@ -189,7 +242,7 @@ tr:hover { background:#f9fafb; }
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="logo">🌸 个人生活台</div>
+    <div class="logo"><span class="logo-icon">🌸</span>个人生活台</div>
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">🏠</span><span>仪表盘</span></div>
     <div class="nav-divider">孕期 & 产后</div>
     <div class="nav-item" data-page="pregnancy"><span class="nav-icon">🤰</span><span id="navPregnancyLabel">孕期跟踪</span></div>
@@ -209,15 +262,24 @@ tr:hover { background:#f9fafb; }
   <main class="main">
     <!-- 仪表盘 -->
     <div class="page active" id="page-dashboard">
-      <h1 class="page-title">仪表盘</h1>
-      <p class="page-subtitle" id="todayDate"></p>
+      <div id="dashGreeting" style="background:var(--primary-gradient);color:#fff;border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-lg)"></div>
       <div id="dashPregnancyBanner"></div>
       <div class="stats-grid" id="dashboardStats"></div>
       <div class="two-col">
-        <div class="card"><div class="card-title">体重趋势</div><div class="chart-container small"><canvas id="dashWeightChart"></canvas></div></div>
-        <div class="card"><div class="card-title">本周支出</div><div class="chart-container small"><canvas id="dashFinanceChart"></canvas></div></div>
+        <div class="card"><div class="card-title">📈 体重趋势</div><div class="chart-container small"><canvas id="dashWeightChart"></canvas></div></div>
+        <div class="card"><div class="card-title">💰 本周支出</div><div class="chart-container small"><canvas id="dashFinanceChart"></canvas></div></div>
       </div>
-      <div class="card"><div class="card-title">近 7 天热量摄入 vs 运动</div><div class="chart-container"><canvas id="dashCaloriesChart"></canvas></div></div>
+      <div class="card"><div class="card-title">📊 近 7 天热量摄入 vs 运动</div><div class="chart-container"><canvas id="dashCaloriesChart"></canvas></div></div>
+      <!-- 快速操作 -->
+      <div class="card"><div class="card-title">⚡ 快速录入</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn outline" onclick="switchToPage('weight')">⚖️ 记体重</button>
+          <button class="btn outline" onclick="switchToPage('diet')">🍽️ 记饮食</button>
+          <button class="btn outline" onclick="switchToPage('finance')">💰 记支出</button>
+          <button class="btn outline" onclick="switchToPage('exercise')">🧘 记运动</button>
+          <button class="btn outline" onclick="switchToPage('pregnancy')">🤰 孕期跟踪</button>
+        </div>
+      </div>
     </div>
 
     <!-- 孕期 & 产后 -->
@@ -475,6 +537,16 @@ tr:hover { background:#f9fafb; }
     </div>
   </main>
 </div>
+
+<!-- 手机端底部 Tab 栏 -->
+<nav class="bottom-tab-bar" id="bottomTabBar">
+  <div class="bottom-tab active" data-page="dashboard"><span class="bt-icon">🏠</span><span>首页</span></div>
+  <div class="bottom-tab" data-page="diet"><span class="bt-icon">🍽️</span><span>饮食</span></div>
+  <div class="bottom-tab" data-page="finance"><span class="bt-icon">💰</span><span>记账</span></div>
+  <div class="bottom-tab" data-page="weight"><span class="bt-icon">⚖️</span><span>体重</span></div>
+  <div class="bottom-tab" data-page="exercise"><span class="bt-icon">🧘</span><span>运动</span></div>
+</nav>
+
 <div class="toast" id="toast"></div>
 <div class="img-modal" id="imgModal" onclick="closeImgModal()"><span class="close-btn">&times;</span><img id="imgModalImg"></div>
 
@@ -1050,14 +1122,25 @@ function selectHistory(field, dropdownId, val) {
 }
 
 // ========== 导航 ==========
+function switchToPage(pageName) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.bottom-tab').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  // 高亮侧边栏
+  const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
+  if (navItem) navItem.classList.add('active');
+  // 高亮底部 Tab
+  const bottomTab = document.querySelector(`.bottom-tab[data-page="${pageName}"]`);
+  if (bottomTab) bottomTab.classList.add('active');
+  document.getElementById('page-' + pageName).classList.add('active');
+  renderAll();
+  window.scrollTo(0, 0);
+}
 document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    item.classList.add('active');
-    document.getElementById('page-' + item.dataset.page).classList.add('active');
-    renderAll();
-  });
+  item.addEventListener('click', () => switchToPage(item.dataset.page));
+});
+document.querySelectorAll('.bottom-tab').forEach(item => {
+  item.addEventListener('click', () => switchToPage(item.dataset.page));
 });
 
 // ========== 孕期模块 ==========
@@ -1671,10 +1754,15 @@ function renderExercise(){
 // ========== 仪表盘 ==========
 function renderDashboard(){
   const today=todayStr();const info=getPregnancyInfo();
-  document.getElementById('todayDate').textContent=`今天是 ${today}`;
+  // 问候横幅
+  const hour=new Date().getHours();
+  const greeting = hour<11?'早上好 ☀️':hour<14?'中午好 🌤️':hour<18?'下午好 🌅':hour<22?'晚上好 🌙':'夜深了 😴';
+  const pregText = info.phase==='postpartum' ? `产后 ${info.weeks}周${info.remainDays>0?'+'+info.remainDays+'天':''}` : `孕${pregWeekStr(info)}`;
+  document.getElementById('dashGreeting').innerHTML = `<div style="font-size:36px">${info.phase==='postpartum'?'👶':'🤰'}</div><div><div style="font-size:20px;font-weight:800">${greeting}！</div><div style="font-size:13px;opacity:.9">${pregText} · 今天是 ${today}</div></div>`;
+
   const banner=document.getElementById('dashPregnancyBanner');
   if(info.phase==='postpartum'){
-    banner.innerHTML=`<div class="postpartum-banner"><div class="pb-emoji">👶</div><div class="pb-info"><h3>产后 ${info.weeks} 周 ${info.remainDays>0?'+'+info.remainDays+'天':''} · 宝宝已出生 ${info.daysPassed} 天</h3><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysPassed}</div><div class="pb-label">产后天数</div></div></div>`;
+    banner.innerHTML=`<div class="postpartum-banner"><div class="pb-emoji">👶</div><div class="pb-info"><h3>产后 ${info.weeks} 周 ${info.remainDays>0?'+'+info.remainDays+'天':''} · 宝宝已出生 ${info.daysPassed} 天</h3><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%;background:linear-gradient(90deg,#7e9b8e,#6b9b7e)"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysPassed}</div><div class="pb-label">产后天数</div></div></div>`;
   } else {
     const wl=info.weeks>=37?'已足月 ✨':info.weeks>=28?'孕晚期':info.weeks>=13?'孕中期':'孕早期';
     banner.innerHTML=`<div class="pregnancy-banner"><div class="pb-emoji">🤰</div><div class="pb-info"><h3>${pregWeekStr(info)} · ${wl}</h3><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysToDue}</div><div class="pb-label">天 倒计时</div></div></div>`;
@@ -1687,17 +1775,16 @@ function renderDashboard(){
   const ym=new Date().toISOString().slice(0,7);
   const monthExp=data.finances.filter(f=>f.date.startsWith(ym)&&(!f.type||f.type==='支出')).reduce((s,f)=>s+f.amount,0);
   const target=getCalorieTarget();
-  const lastCu=data.checkups.length>0?data.checkups[0]:null;
   document.getElementById('dashboardStats').innerHTML=`
-    <div class="stat-card"><div class="stat-label">最新体重</div><div class="stat-value primary">${latestWeight?latestWeight.value+' kg':'-'}</div><div class="stat-trend">${latestWeight?latestWeight.date:'暂无'}</div></div>
-    <div class="stat-card pink-border"><div class="stat-label">今日摄入 / 目标</div><div class="stat-value ${todayCal>target?'red':'orange'}">${todayCal} / ${target}</div><div class="stat-trend">${todayCal>target?'已超量':'控制中'} · ${todayDiet.length}条</div></div>
-    <div class="stat-card"><div class="stat-label">今日运动消耗</div><div class="stat-value green">${todayExCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">${todayEx.length} 次运动</div></div>
-    <div class="stat-card"><div class="stat-label">本月支出</div><div class="stat-value red">¥${monthExp.toFixed(2)}</div></div>`;
+    <div class="stat-card"><div class="stat-icon" style="background:var(--primary-bg)">⚖️</div><div class="stat-label">最新体重</div><div class="stat-value primary">${latestWeight?latestWeight.value+' kg':'-'}</div><div class="stat-trend">${latestWeight?latestWeight.date:'暂无'}</div></div>
+    <div class="stat-card pink-border"><div class="stat-icon" style="background:#fef3c7">🍽️</div><div class="stat-label">今日摄入 / 目标</div><div class="stat-value ${todayCal>target?'red':'orange'}">${todayCal} / ${target}</div><div class="stat-trend">${todayCal>target?'已超量':'控制中'} · ${todayDiet.length}条</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#d1fae5">🧘</div><div class="stat-label">今日运动消耗</div><div class="stat-value green">${todayExCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">${todayEx.length} 次运动</div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:#fee2e2">💰</div><div class="stat-label">本月支出</div><div class="stat-value red">¥${monthExp.toFixed(2)}</div></div>`;
   if(charts.dashWeight)charts.dashWeight.destroy();
-  if(data.weights.length>0){charts.dashWeight=new Chart(document.getElementById('dashWeightChart'),{type:'line',data:{labels:data.weights.map(w=>w.date.slice(5)),datasets:[{label:'体重(kg)',data:data.weights.map(w=>w.value),borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.1)',fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});}
+  if(data.weights.length>0){charts.dashWeight=new Chart(document.getElementById('dashWeightChart'),{type:'line',data:{labels:data.weights.map(w=>w.date.slice(5)),datasets:[{label:'体重(kg)',data:data.weights.map(w=>w.value),borderColor:'#e8806b',backgroundColor:'rgba(232,128,107,0.1)',fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});}
   if(charts.dashFin)charts.dashFin.destroy();
   const d7=getLastNDays(7);
-  charts.dashFin=new Chart(document.getElementById('dashFinanceChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&(!f.type||f.type==='支出')).reduce((s,f)=>s+f.amount,0)),backgroundColor:'#ef4444',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
+  charts.dashFin=new Chart(document.getElementById('dashFinanceChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&(!f.type||f.type==='支出')).reduce((s,f)=>s+f.amount,0)),backgroundColor:'#e8806b',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
   if(charts.dashCal)charts.dashCal.destroy();
   charts.dashCal=new Chart(document.getElementById('dashCaloriesChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'摄入(kcal)',data:d7.map(d=>data.diets.filter(di=>di.date===d).reduce((s,di)=>s+di.calories,0)),backgroundColor:'#f59e0b',borderRadius:6},{label:'运动消耗(kcal)',data:d7.map(d=>data.exercises.filter(e=>e.date===d).reduce((s,e)=>s+e.calories,0)),backgroundColor:'#10b981',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
 }
