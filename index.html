@@ -135,6 +135,19 @@ tr:hover { background:#f9fafb; }
 .img-modal.show { display:flex; }
 .img-modal img { max-width:90%; max-height:90%; border-radius:8px; }
 .img-modal .close-btn { position:absolute; top:20px; right:20px; color:#fff; font-size:28px; cursor:pointer; }
+/* AI识别结果确认弹窗 */
+.ai-result-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:10000; justify-content:center; align-items:flex-start; padding-top:40px; overflow-y:auto; }
+.ai-result-modal.show { display:flex; }
+.ai-result-content { background:#fff; border-radius:12px; width:92%; max-width:640px; max-height:85vh; overflow-y:auto; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,.2); }
+.ai-result-content .modal-title { font-size:18px; font-weight:700; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
+.ai-result-content .modal-subtitle { font-size:13px; color:var(--text-light); margin-bottom:12px; }
+.ai-result-table { width:100%; border-collapse:collapse; font-size:14px; }
+.ai-result-table th { background:#f3f4f6; padding:8px; text-align:left; font-weight:600; }
+.ai-result-table td { padding:6px; border-bottom:1px solid #eee; }
+.ai-result-table input { width:100%; padding:6px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
+.ai-result-table input.amount-input { text-align:right; }
+.ai-result-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; padding-top:12px; border-top:1px solid #eee; }
+.ai-result-total { font-weight:700; color:var(--primary); font-size:16px; margin-top:12px; text-align:right; }
 /* 物品输入 */
 .item-fields { background:#f9fafb; border-radius:8px; padding:12px; margin-top:8px; }
 </style>
@@ -428,6 +441,24 @@ tr:hover { background:#f9fafb; }
 <div class="toast" id="toast"></div>
 <div class="img-modal" id="imgModal" onclick="closeImgModal()"><span class="close-btn">&times;</span><img id="imgModalImg"></div>
 
+<!-- AI识别结果确认弹窗 -->
+<div class="ai-result-modal" id="aiResultModal">
+  <div class="ai-result-content">
+    <div class="modal-title">🤖 AI 识别结果确认 <span style="cursor:pointer;font-size:24px" onclick="closeAIResultModal()">&times;</span></div>
+    <div class="modal-subtitle">请核对每一项商品的名称和金额，可修改、删除或补漏：</div>
+    <table class="ai-result-table">
+      <thead><tr><th style="width:45%">产品名称</th><th style="width:20%">金额</th><th style="width:25%">规格/备注</th><th style="width:10%"></th></tr></thead>
+      <tbody id="aiResultTbody"></tbody>
+    </table>
+    <div class="ai-result-total" id="aiResultTotal">总额：¥0.00</div>
+    <div class="ai-result-actions">
+      <button class="btn outline" onclick="addAIResultRow()">➕ 添加一项</button>
+      <button class="btn outline" onclick="closeAIResultModal()">取消</button>
+      <button class="btn" onclick="confirmAIResult()">✅ 确认添加</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ========== 内置食物库 ==========
 const FOOD_LIB = [
@@ -646,6 +677,8 @@ async function aiRecognizeDiet() {
 }
 
 // AI 识别消费单据
+let aiResultContext = null; // 临时保存识别结果和上下文
+
 async function aiRecognizeFinance() {
   const serverUrl = getAIServerUrl();
   if (!serverUrl) { showToast('请先在设置中配置AI服务地址'); return; }
@@ -661,10 +694,6 @@ async function aiRecognizeFinance() {
     const result = await resp.json();
     if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
     if (result.items && result.items.length > 0) {
-      const date = document.getElementById('finDate').value;
-      const type = document.getElementById('finType').value;
-      const note = document.getElementById('finNote').value.trim();
-
       if (result.items.length === 1) {
         // 只有一项时填充当前表单
         const item = result.items[0];
@@ -678,39 +707,26 @@ async function aiRecognizeFinance() {
           for (const opt of catSelect.options) { if (opt.value === item.category) { opt.selected = true; break; } }
         }
         resultEl.innerHTML = `✅ 识别到 1 项，已填充${result.total_amount ? ' | 总额¥' + result.total_amount : ''}`;
+        showToast('AI识别完成');
       } else {
-        // 识别到多项时，自动批量添加为多条账目
-        let added = 0;
-        const baseTs = Date.now();
-        result.items.forEach((item, idx) => {
-          const amount = parseFloat(item.amount);
-          if (isNaN(amount) || amount < 0) return;
-          const category = item.category && FINANCE_CATEGORIES['支出'].includes(item.category) ? item.category : '日用';
-          data.finances.push({
-            id: baseTs + idx,
-            date,
-            type,
-            category,
-            amount,
-            note,
-            photo: idx === 0 ? finPhotoData : null, // 只有第一条保留照片，避免重复占用空间
+        // 多项时弹出确认弹窗
+        aiResultContext = {
+          date: document.getElementById('finDate').value,
+          type: document.getElementById('finType').value,
+          note: document.getElementById('finNote').value.trim(),
+          photo: finPhotoData,
+          items: result.items.map(item => ({
             pname: (item.pname || '消费').toString().trim(),
-            brand: (item.brand || '').toString().trim(),
+            amount: parseFloat(item.amount) || 0,
             spec: (item.spec || '').toString().trim(),
-            qty: item.qty === undefined || item.qty === null ? '' : item.qty.toString()
-          });
-          added++;
-        });
-        saveData();
-        // 清空表单
-        document.getElementById('finAmount').value='';document.getElementById('finNote').value='';
-        document.getElementById('finPname').value='';document.getElementById('finBrand').value='';
-        document.getElementById('finSpec').value='';document.getElementById('finQty').value='';
-        clearFinPhoto();
-        renderFinance();
-        resultEl.innerHTML = `✅ 识别到 ${result.items.length} 项，已自动添加 ${added} 条账目${result.total_amount ? ' | 总额¥' + result.total_amount : ''}`;
+            brand: (item.brand || '').toString().trim(),
+            qty: item.qty === undefined || item.qty === null ? '' : item.qty.toString(),
+            category: item.category && FINANCE_CATEGORIES['支出'].includes(item.category) ? item.category : '日用'
+          })).filter(item => item.pname && item.amount >= 0)
+        };
+        showAIResultModal();
+        resultEl.textContent = '';
       }
-      showToast('AI识别完成');
     } else if (result.raw) {
       resultEl.textContent = '⚠️ 识别结果: ' + result.raw.substring(0, 100);
     } else {
@@ -722,6 +738,111 @@ async function aiRecognizeFinance() {
     btn.disabled = false; btn.textContent = '🤖 AI识别';
   }
 }
+
+function showAIResultModal() {
+  renderAIResultItems();
+  document.getElementById('aiResultModal').classList.add('show');
+}
+
+function closeAIResultModal() {
+  document.getElementById('aiResultModal').classList.remove('show');
+  aiResultContext = null;
+}
+
+function renderAIResultItems() {
+  const tbody = document.getElementById('aiResultTbody');
+  if (!aiResultContext || aiResultContext.items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">暂无识别结果</td></tr>';
+    updateAITotal();
+    return;
+  }
+  tbody.innerHTML = aiResultContext.items.map((item, idx) => `
+    <tr data-idx="${idx}">
+      <td><input type="text" value="${escapeHtml(item.pname)}" class="ai-pname" placeholder="产品名称"></td>
+      <td><input type="number" step="0.01" value="${item.amount.toFixed(2)}" class="ai-amount amount-input" placeholder="0.00"></td>
+      <td><input type="text" value="${escapeHtml(item.spec)}" class="ai-spec" placeholder="规格"></td>
+      <td><button class="btn-danger" onclick="removeAIResultRow(${idx})">🗑️</button></td>
+    </tr>
+  `).join('');
+  updateAITotal();
+}
+
+function updateAITotal() {
+  if (!aiResultContext) return;
+  const rows = document.querySelectorAll('#aiResultTbody tr');
+  let total = 0;
+  rows.forEach(row => {
+    const amt = parseFloat(row.querySelector('.ai-amount')?.value || 0);
+    if (!isNaN(amt)) total += amt;
+  });
+  document.getElementById('aiResultTotal').textContent = '总额：¥' + total.toFixed(2) + '（' + rows.length + ' 项）';
+}
+
+function addAIResultRow() {
+  if (!aiResultContext) return;
+  aiResultContext.items.push({ pname: '', amount: 0, spec: '', brand: '', qty: '', category: '日用' });
+  renderAIResultItems();
+}
+
+function removeAIResultRow(idx) {
+  if (!aiResultContext) return;
+  aiResultContext.items.splice(idx, 1);
+  renderAIResultItems();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function confirmAIResult() {
+  if (!aiResultContext) return;
+  const rows = document.querySelectorAll('#aiResultTbody tr');
+  const items = [];
+  rows.forEach(row => {
+    const pname = row.querySelector('.ai-pname')?.value.trim();
+    const amount = parseFloat(row.querySelector('.ai-amount')?.value || 0);
+    const spec = row.querySelector('.ai-spec')?.value.trim() || '';
+    if (pname && !isNaN(amount) && amount >= 0) {
+      items.push({ pname, amount, spec });
+    }
+  });
+  if (items.length === 0) { showToast('没有可添加的项目'); return; }
+
+  const { date, type, note, photo } = aiResultContext;
+  const baseTs = Date.now();
+  items.forEach((item, idx) => {
+    data.finances.push({
+      id: baseTs + idx,
+      date,
+      type,
+      category: '日用',
+      amount: item.amount,
+      note,
+      photo: idx === 0 ? photo : null,
+      pname: item.pname,
+      brand: '',
+      spec: item.spec,
+      qty: ''
+    });
+  });
+  saveData();
+  // 清空表单
+  document.getElementById('finAmount').value='';document.getElementById('finNote').value='';
+  document.getElementById('finPname').value='';document.getElementById('finBrand').value='';
+  document.getElementById('finSpec').value='';document.getElementById('finQty').value='';
+  clearFinPhoto();
+  renderFinance();
+  closeAIResultModal();
+  document.getElementById('finAIResult').innerHTML = `✅ 已添加 ${items.length} 条账目，总额 ¥${items.reduce((s,i)=>s+i.amount,0).toFixed(2)}`;
+  showToast('账目已添加');
+}
+
+// 输入变化时实时更新总额
+document.addEventListener('input', (e) => {
+  if (e.target.classList.contains('ai-amount')) updateAITotal();
+});
 
 // AI 设置弹窗
 function showAISettings() {
