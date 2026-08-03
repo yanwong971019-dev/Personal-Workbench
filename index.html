@@ -712,6 +712,77 @@ function getAIToken() { return localStorage.getItem(AI_TOKEN_KEY) || ''; }
 function setAIToken(token) { localStorage.setItem(AI_TOKEN_KEY, token); }
 function isAIConfigured() { return getAIServerUrl() && getAIToken(); }
 
+// ========== 云端同步 ==========
+let syncEnabled = false; // 是否已配置同步
+let lastSyncTime = 0;
+let syncTimer = null;
+
+function canSync() { return isAIConfigured(); }
+
+// 从云端拉取数据
+async function pullFromCloud() {
+  if (!canSync()) return null;
+  try {
+    const resp = await fetch(getAIServerUrl() + '/api/sync', {
+      headers: { 'X-Auth-Token': getAIToken() }
+    });
+    const result = await resp.json();
+    if (result.error) { console.warn('拉取失败:', result.error); return null; }
+    return result.data;
+  } catch (err) { console.warn('拉取异常:', err.message); return null; }
+}
+
+// 推送数据到云端（防抖，3秒内多次操作只推一次）
+function pushToCloud() {
+  if (!canSync()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try {
+      const resp = await fetch(getAIServerUrl() + '/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getAIToken() },
+        body: JSON.stringify({ data })
+      });
+      const result = await resp.json();
+      if (result.success) {
+        lastSyncTime = Date.now();
+        console.log('✅ 数据已同步到云端');
+      }
+    } catch (err) { console.warn('推送异常:', err.message); }
+  }, 3000);
+}
+
+// 包装 saveData，每次保存自动同步
+const _originalSaveData = saveData;
+saveData = function() {
+  _originalSaveData();
+  pushToCloud();
+};
+
+// 启动时从云端拉取
+async function initCloudSync() {
+  if (!canSync()) return;
+  const cloudData = await pullFromCloud();
+  if (cloudData) {
+    // 合并云端数据（以数据量多的为准，避免覆盖）
+    if (Object.keys(cloudData).length > 0) {
+      const localCount = (data.weights||[]).length + (data.diets||[]).length + (data.finances||[]).length + (data.exercises||[]).length;
+      const cloudCount = (cloudData.weights||[]).length + (cloudData.diets||[]).length + (cloudData.finances||[]).length + (cloudData.exercises||[]).length;
+      if (cloudCount > localCount) {
+        data = cloudData;
+        // 确保所有字段存在
+        if (!data.budget) data.budget = {};
+        if (!data.checkups) data.checkups = [];
+        if (!data.postpartums) data.postpartums = [];
+        if (data.prePregWeight === undefined) data.prePregWeight = null;
+        _originalSaveData();
+        renderAll();
+        console.log('✅ 已从云端恢复数据');
+      }
+    }
+  }
+}
+
 // 饮食拍照后显示AI按钮
 function handleDietPhoto(event) {
   const file = event.target.files[0]; if (!file) return;
@@ -1928,6 +1999,16 @@ const today=todayStr();
 ['weightDate','dietDate','finDate','exDate','cuDate','ppDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
 updateFinCategories();
 renderAll();
+
+// 从云端拉取最新数据
+initCloudSync();
+
+// 页面重新可见时（从后台切回来）自动拉取
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && canSync()) {
+    initCloudSync();
+  }
+});
 
 // 首次进入记账页面时引导设置预算
 const ym = new Date().toISOString().slice(0,7);
