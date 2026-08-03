@@ -278,7 +278,7 @@ tr:hover { background:#f9fafb; }
           </div>
           <div class="form-group photo-btn-wrap">
             <label>拍照留档 + AI识别</label>
-            <input type="file" id="dietPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleDietPhoto(event)">
+            <input type="file" id="dietPhotoInput" accept="image/*" style="display:none" onchange="handleDietPhoto(event)">
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <button class="btn outline" onclick="document.getElementById('dietPhotoInput').click()">📷 拍照</button>
               <button class="btn" id="dietAIBtn" onclick="aiRecognizeDiet()" style="display:none">🤖 AI识别</button>
@@ -369,7 +369,7 @@ tr:hover { background:#f9fafb; }
           <div class="form-group photo-btn-wrap">
             <label>拍照/截图 + AI识别</label>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <input type="file" id="finPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleFinPhoto(event)">
+              <input type="file" id="finPhotoInput" accept="image/*" style="display:none" onchange="handleFinPhoto(event)">
               <button class="btn outline" onclick="document.getElementById('finPhotoInput').click()">📷 拍照</button>
               <button class="btn" id="finAIBtn" onclick="aiRecognizeFinance()" style="display:none">🤖 AI识别</button>
               <img id="finPhotoPreview" class="photo-preview" style="display:none" onclick="document.getElementById('finPhotoInput').click()">
