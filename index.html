@@ -561,10 +561,14 @@ function clearFinPhoto() {
 }
 
 // ========== AI 识别功能 ==========
-// 配置：部署好 AI 后端后，在设置里填入后端地址
+// 配置：部署好 AI 后端后，在设置里填入后端地址和密码
 const AI_CONFIG_KEY = 'ai_server_url';
+const AI_TOKEN_KEY = 'ai_auth_token';
 function getAIServerUrl() { return localStorage.getItem(AI_CONFIG_KEY) || ''; }
 function setAIServerUrl(url) { localStorage.setItem(AI_CONFIG_KEY, url); }
+function getAIToken() { return localStorage.getItem(AI_TOKEN_KEY) || ''; }
+function setAIToken(token) { localStorage.setItem(AI_TOKEN_KEY, token); }
+function isAIConfigured() { return getAIServerUrl() && getAIToken(); }
 
 // 饮食拍照后显示AI按钮
 function handleDietPhoto(event) {
@@ -574,7 +578,7 @@ function handleDietPhoto(event) {
     const preview = document.getElementById('dietPhotoPreview');
     preview.src = base64; preview.style.display = 'block';
     document.getElementById('dietPhotoClear').style.display = 'inline-block';
-    document.getElementById('dietAIBtn').style.display = getAIServerUrl() ? 'inline-block' : 'none';
+    document.getElementById('dietAIBtn').style.display = isAIConfigured() ? 'inline-block' : 'none';
     document.getElementById('dietAIResult').textContent = '';
   });
 }
@@ -595,7 +599,7 @@ function handleFinPhoto(event) {
     const preview = document.getElementById('finPhotoPreview');
     preview.src = base64; preview.style.display = 'block';
     document.getElementById('finPhotoClear').style.display = 'inline-block';
-    document.getElementById('finAIBtn').style.display = getAIServerUrl() ? 'inline-block' : 'none';
+    document.getElementById('finAIBtn').style.display = isAIConfigured() ? 'inline-block' : 'none';
     document.getElementById('finAIResult').textContent = '';
   });
 }
@@ -610,7 +614,7 @@ async function aiRecognizeDiet() {
   btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
   try {
     const resp = await fetch(serverUrl + '/api/recognize', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getAIToken() },
       body: JSON.stringify({ image: dietPhotoData, type: 'diet' })
     });
     const result = await resp.json();
@@ -650,7 +654,7 @@ async function aiRecognizeFinance() {
   btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
   try {
     const resp = await fetch(serverUrl + '/api/recognize', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getAIToken() },
       body: JSON.stringify({ image: finPhotoData, type: 'finance' })
     });
     const result = await resp.json();
@@ -683,13 +687,22 @@ async function aiRecognizeFinance() {
 
 // AI 设置弹窗
 function showAISettings() {
-  const current = getAIServerUrl();
-  const url = prompt('请输入AI服务地址（Vercel后端URL）：\n\n例如: https://your-app.vercel.app\n\n部署好AI后端后填入此处', current);
+  const currentUrl = getAIServerUrl();
+  const currentToken = getAIToken();
+  const url = prompt('请输入AI服务地址（Vercel后端URL）：\n\n例如: https://your-app.vercel.app\n\n部署好AI后端后填入此处', currentUrl);
   if (url !== null) {
     const cleanUrl = url.trim().replace(/\/$/, '');
     setAIServerUrl(cleanUrl);
-    if (cleanUrl) { showToast('AI服务已配置'); location.reload(); }
-    else { showToast('AI服务已清除'); location.reload(); }
+    if (cleanUrl) {
+      const token = prompt('请输入AI访问密码（Vercel环境变量里的AUTH_TOKEN）：\n\n留空则不加密码保护', currentToken);
+      if (token !== null) {
+        setAIToken(token.trim());
+      }
+      showToast('AI服务已配置'); location.reload();
+    } else {
+      setAIToken('');
+      showToast('AI服务已清除'); location.reload();
+    }
   }
 }
 function searchFoodLib(query) {
