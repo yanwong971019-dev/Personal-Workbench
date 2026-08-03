@@ -1366,9 +1366,9 @@ function renderDietWeeklyReport(weekItems, target) {
 }
 
 // ========== 记账模块 v4（预算+统计版） ==========
-const FINANCE_CATEGORIES = ['餐饮','生鲜食材','零食饮料','日用家居','个护美容','母婴用品','服饰鞋包','数码电器','住房物业','交通出行','通讯网络','文教娱乐','医疗健康','人情社交','金融保险','其他支出'];
-const CAT_ICONS = {'餐饮':'🍽️','生鲜食材':'🥬','零食饮料':'🧋','日用家居':'🧴','个护美容':'💄','母婴用品':'🍼','服饰鞋包':'👕','数码电器':'📱','住房物业':'🏠','交通出行':'🚌','通讯网络':'📶','文教娱乐':'📚','医疗健康':'💊','人情社交':'🎁','金融保险':'💳','其他支出':'📦'};
-const CAT_COLORS = {'餐饮':'#f59e0b','生鲜食材':'#84cc16','零食饮料':'#ec4899','日用家居':'#14b8a6','个护美容':'#f472b6','母婴用品':'#fb923c','服饰鞋包':'#8b5cf6','数码电器':'#6366f1','住房物业':'#6b7280','交通出行':'#3b82f6','通讯网络':'#06b6d4','文教娱乐':'#a855f7','医疗健康':'#ef4444','人情社交':'#e11d48','金融保险':'#0ea5e9','其他支出':'#78716c'};
+const FINANCE_CATEGORIES = ['餐饮','生鲜食材','零食饮料','日用家居','个护美容','母婴用品','服饰鞋包','数码电器','AI软件','住房物业','交通出行','通讯网络','文教娱乐','医疗健康','人情社交','金融保险','其他支出'];
+const CAT_ICONS = {'餐饮':'🍽️','生鲜食材':'🥬','零食饮料':'🧋','日用家居':'🧴','个护美容':'💄','母婴用品':'🍼','服饰鞋包':'👕','数码电器':'📱','AI软件':'🤖','住房物业':'🏠','交通出行':'🚌','通讯网络':'📶','文教娱乐':'📚','医疗健康':'💊','人情社交':'🎁','金融保险':'💳','其他支出':'📦'};
+const CAT_COLORS = {'餐饮':'#f59e0b','生鲜食材':'#84cc16','零食饮料':'#ec4899','日用家居':'#14b8a6','个护美容':'#f472b6','母婴用品':'#fb923c','服饰鞋包':'#8b5cf6','数码电器':'#6366f1','AI软件':'#0ea5e9','住房物业':'#6b7280','交通出行':'#3b82f6','通讯网络':'#06b6d4','文教娱乐':'#a855f7','医疗健康':'#ef4444','人情社交':'#e11d48','金融保险':'#0284c7','其他支出':'#78716c'};
 
 function getBudget(ym) { return data.budget && data.budget[ym] ? data.budget[ym] : null; }
 function setBudget(ym, amount) { if(!data.budget) data.budget = {}; data.budget[ym] = amount; saveData(); }
@@ -1664,7 +1664,7 @@ function renderFinanceTrendChart() {
 // 品牌追踪（按分类分组，可折叠）
 function renderBrandTracker() {
   const trackerEl=document.getElementById('finBrandTracker');
-  const expenses=data.finances.filter(f=>isExpense(f)&&f.pname);
+  const expenses=data.finances.filter(f=>isExpense(f)&&f.pname&&f.brand);
   if(expenses.length===0){trackerEl.innerHTML='<div class="empty">暂无物品记录</div>';return;}
 
   // 按 category 分组
@@ -1694,7 +1694,7 @@ function renderBrandTracker() {
       return tb-ta;
     }).map(([pname,items])=>{
       const byBrand={};
-      items.forEach(f=>{const b=f.brand||'无品牌';if(!byBrand[b])byBrand[b]={spec:f.spec||'',total:0,count:0,dates:[]};byBrand[b].total+=f.amount;byBrand[b].count++;byBrand[b].dates.push(f.date);});
+      items.forEach(f=>{const b=f.brand;if(!byBrand[b])byBrand[b]={spec:f.spec||'',total:0,count:0,dates:[]};byBrand[b].total+=f.amount;byBrand[b].count++;byBrand[b].dates.push(f.date);});
       const itemTotal=items.reduce((s,f)=>s+f.amount,0);
       const brandHtml=Object.entries(byBrand).sort((a,b)=>b[1].total-a[1].total).map(([b,info])=>{
         const avg=(info.total/info.count).toFixed(2);
