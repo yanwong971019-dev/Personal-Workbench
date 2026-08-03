@@ -304,14 +304,16 @@ tr:hover { background:#f9fafb; }
           <div class="form-group">
             <label>食物名称（输入可搜索食物库）</label>
             <div class="food-search-wrap">
-              <input type="text" id="dietFood" placeholder="如 米饭" oninput="searchFoodLib(this.value)" onfocus="searchFoodLib(this.value)" onblur="setTimeout(()=>document.getElementById('foodDropdown').classList.remove('show'),200)">
+              <input type="text" id="dietFood" placeholder="如 米饭" oninput="searchFoodLib(this.value)" onfocus="searchFoodLib(this.value)" onblur="setTimeout(()=>{document.getElementById('foodDropdown').classList.remove('show');estimateDietCalories()},200)">
               <div class="food-dropdown" id="foodDropdown"></div>
             </div>
           </div>
           <div class="form-group"><label>热量 (kcal)</label><input type="number" id="dietCalories" placeholder="如 200"></div>
           <div class="form-group"><label>食物分类</label><select id="dietCategory"><option value="主食">主食</option><option value="蛋白质">蛋白质</option><option value="蔬菜">蔬菜</option><option value="水果">水果</option><option value="乳制品">乳制品</option><option value="零食">零食</option><option value="饮品">饮品</option><option value="其他">其他</option></select></div>
-          <div class="form-group"><label>份量/备注</label><input type="text" id="dietNote" placeholder="如 1小碗"></div>
+          <div class="form-group"><label>份量/备注</label><input type="text" id="dietNote" placeholder="如 1小碗" onblur="estimateDietCalories()"></div>
         </div>
+        <!-- 营养提醒条 -->
+        <div id="dietNutriAlert" style="margin-top:8px"></div>
         <div class="form-row">
           <div class="form-group"><label>营养标签（可多选）</label>
             <div class="tag-select" id="dietTags">
@@ -673,6 +675,79 @@ function handleFinPhoto(event) {
 }
 
 // AI 识别食物
+// AI 文本估算卡路里（输入食物名+份量后自动触发）
+let estimateTimer = null;
+function estimateDietCalories() {
+  const food = document.getElementById('dietFood').value.trim();
+  const amount = document.getElementById('dietNote').value.trim();
+  if (!food || !isAIConfigured()) return;
+  // 如果食物库里能精确匹配，直接用食物库数据
+  const libMatch = FOOD_LIB.find(f => f.name === food);
+  if (libMatch) {
+    document.getElementById('dietCalories').value = libMatch.cal;
+    document.getElementById('dietCategory').value = libMatch.cat;
+    document.querySelectorAll('#dietTags .tag-chip').forEach(chip => {
+      chip.classList.toggle('active', libMatch.tags.includes(chip.dataset.tag));
+    });
+    showNutriAlert(libMatch.tags, libMatch.cat, food);
+    return;
+  }
+  // 食物库没匹配到，调用 AI 估算
+  clearTimeout(estimateTimer);
+  estimateTimer = setTimeout(async () => {
+    const alertEl = document.getElementById('dietNutriAlert');
+    alertEl.innerHTML = '<span style="font-size:13px;color:var(--text-light)">🤖 估算中...</span>';
+    try {
+      const resp = await fetch(getAIServerUrl() + '/api/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getAIToken() },
+        body: JSON.stringify({ food, amount })
+      });
+      const result = await resp.json();
+      if (result.error) { alertEl.innerHTML = ''; return; }
+      if (result.calories) document.getElementById('dietCalories').value = result.calories;
+      if (result.category) document.getElementById('dietCategory').value = result.category;
+      if (result.tags && result.tags.length > 0) {
+        document.querySelectorAll('#dietTags .tag-chip').forEach(chip => {
+          chip.classList.toggle('active', result.tags.includes(chip.dataset.tag));
+        });
+      }
+      showNutriAlert(result.tags || [], result.category || '其他', food, result.advice);
+    } catch (err) {
+      alertEl.innerHTML = '';
+    }
+  }, 300);
+}
+
+// 营养提醒（高热量/高糖→警告，低卡/高纤维/高蛋白→推荐）
+function showNutriAlert(tags, category, food, advice) {
+  const el = document.getElementById('dietNutriAlert');
+  if (!tags || tags.length === 0) { el.innerHTML = ''; return; }
+
+  const warnTags = tags.filter(t => ['高糖', '高脂'].includes(t));
+  const goodTags = tags.filter(t => ['低卡', '高纤维', '高蛋白', '控糖友好'].includes(t));
+
+  let html = '';
+  if (warnTags.length > 0) {
+    html += `<div class="alert-bar danger" style="margin-bottom:6px">
+      <span class="alert-icon">⚠️</span>
+      <div><strong>${food}</strong> 含 ${warnTags.join('、')} 成分，孕晚期应少吃，避免体重增长过快和血糖波动${advice ? '<br>💬 ' + advice : ''}</div>
+    </div>`;
+  }
+  if (goodTags.length > 0) {
+    html += `<div class="alert-bar ok" style="margin-bottom:6px">
+      <span class="alert-icon">✅</span>
+      <div><strong>${food}</strong> ${goodTags.join('、')}，适合孕期多吃，有助于控重和营养均衡${advice ? '<br>💬 ' + advice : ''}</div>
+    </div>`;
+  }
+  if (warnTags.length === 0 && goodTags.length === 0) {
+    html = `<div class="alert-bar" style="background:#f3f4f6;margin-bottom:6px">
+      <span class="alert-icon">📊</span><div><strong>${food}</strong> 营养适中，注意控制份量即可</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
 async function aiRecognizeDiet() {
   const serverUrl = getAIServerUrl();
   if (!serverUrl) { showToast('请先在设置中配置AI服务地址'); return; }
@@ -699,6 +774,7 @@ async function aiRecognizeDiet() {
       }
       const advice = result.advice ? ' | 💬 ' + result.advice : '';
       resultEl.innerHTML = `✅ 识别到: ${item.food} · ${item.calories}kcal${advice}`;
+      showNutriAlert(item.tags || [], item.category || '其他', item.food, result.advice);
       showToast('AI识别完成');
     } else if (result.raw) {
       resultEl.textContent = '⚠️ 识别结果: ' + result.raw.substring(0, 100);
@@ -1095,6 +1171,7 @@ function addDiet() {
   saveData();
   document.getElementById('dietFood').value='';document.getElementById('dietCalories').value='';document.getElementById('dietNote').value='';
   document.querySelectorAll('#dietTags .tag-chip').forEach(c=>c.classList.remove('active'));
+  document.getElementById('dietNutriAlert').innerHTML='';
   clearDietPhoto();
   showToast('饮食记录已添加'); renderDiet();
 }
