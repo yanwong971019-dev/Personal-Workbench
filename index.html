@@ -150,6 +150,40 @@ tr:hover { background:#f9fafb; }
 .ai-result-total { font-weight:700; color:var(--primary); font-size:16px; margin-top:12px; text-align:right; }
 /* 物品输入 */
 .item-fields { background:#f9fafb; border-radius:8px; padding:12px; margin-top:8px; }
+/* Tab 切换组 */
+.tab-group { display:flex; gap:4px; }
+.tab { padding:4px 14px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-size:13px; color:var(--text-light); transition:all .2s; }
+.tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+/* 预算进度条 */
+.budget-progress { width:100%; height:8px; background:#f3f4f6; border-radius:4px; overflow:hidden; margin-top:6px; }
+.budget-progress-bar { height:100%; border-radius:4px; transition:width .3s; }
+.budget-progress-bar.normal { background:#10b981; }
+.budget-progress-bar.warning { background:#f59e0b; }
+.budget-progress-bar.danger { background:#ef4444; }
+/* 分类统计行 */
+.cat-row { display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .2s; }
+.cat-row:hover { background:#f9fafb; margin:0 -8px; padding:10px 8px; border-radius:6px; }
+.cat-row:last-child { border-bottom:none; }
+.cat-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-right:10px; flex-shrink:0; }
+.cat-info { flex:1; min-width:0; }
+.cat-name { font-size:14px; font-weight:600; }
+.cat-bar { width:100%; height:6px; background:#f3f4f6; border-radius:3px; overflow:hidden; margin-top:4px; }
+.cat-bar-fill { height:100%; border-radius:3px; }
+.cat-amount { text-align:right; flex-shrink:0; margin-left:10px; }
+.cat-amount .amt { font-size:15px; font-weight:700; }
+.cat-amount .pct { font-size:11px; color:var(--text-light); }
+/* 月度报告 */
+.report-section { margin-bottom:16px; }
+.report-section h4 { font-size:14px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.report-item { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f9fafb; font-size:13px; }
+.report-item:last-child { border-bottom:none; }
+.report-item .ri-label { color:var(--text-light); }
+.report-item .ri-value { font-weight:600; }
+.report-tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; font-weight:600; margin-left:6px; }
+.report-tag.must { background:#dbeafe; color:#2563eb; }
+.report-tag.up { background:#fef3c7; color:#d97706; }
+.report-tag.down { background:#d1fae5; color:#059669; }
+.report-tag.warn { background:#fee2e2; color:#dc2626; }
 </style>
 </head>
 <body>
@@ -181,7 +215,7 @@ tr:hover { background:#f9fafb; }
       <div class="stats-grid" id="dashboardStats"></div>
       <div class="two-col">
         <div class="card"><div class="card-title">体重趋势</div><div class="chart-container small"><canvas id="dashWeightChart"></canvas></div></div>
-        <div class="card"><div class="card-title">本周收支</div><div class="chart-container small"><canvas id="dashFinanceChart"></canvas></div></div>
+        <div class="card"><div class="card-title">本周支出</div><div class="chart-container small"><canvas id="dashFinanceChart"></canvas></div></div>
       </div>
       <div class="card"><div class="card-title">近 7 天热量摄入 vs 运动</div><div class="chart-container"><canvas id="dashCaloriesChart"></canvas></div></div>
     </div>
@@ -343,19 +377,18 @@ tr:hover { background:#f9fafb; }
       <div class="card"><div class="card-title">📋 本周饮食分析报告</div><div id="dietWeeklyReport"></div></div>
     </div>
 
-    <!-- ============ 记账模块（v3升级） ============ -->
+    <!-- ============ 记账模块（v4 预算+统计版） ============ -->
     <div class="page" id="page-finance">
       <h1 class="page-title">记账</h1>
-      <p class="page-subtitle">物品级追踪 · 品牌对比 · 消费报告</p>
+      <p class="page-subtitle">预算管控 · 分类统计 · 消费报告</p>
 
-      <div class="card"><div class="card-title">添加账目</div>
+      <div class="card"><div class="card-title">添加支出</div>
         <div class="form-row">
           <div class="form-group"><label>日期</label><input type="date" id="finDate"></div>
-          <div class="form-group"><label>类型</label><select id="finType" onchange="toggleFinItemFields()"><option value="支出">支出</option><option value="收入">收入</option></select></div>
           <div class="form-group"><label>分类</label><select id="finCategory"></select></div>
           <div class="form-group"><label>金额 (元)</label><input type="number" id="finAmount" step="0.01" placeholder="如 25.50"></div>
         </div>
-        <!-- 物品明细（支出类显示） -->
+        <!-- 物品明细 -->
         <div class="item-fields" id="finItemFields">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-light)">📦 物品明细（一物一条）</div>
           <div class="form-row">
@@ -394,25 +427,27 @@ tr:hover { background:#f9fafb; }
         </div>
       </div>
 
+      <!-- 预算统计卡片 -->
       <div class="stats-grid" id="financeStats"></div>
 
-      <!-- 月度消费报告 -->
-      <div class="card"><div class="card-title">📊 <span id="finReportMonth">本月</span>消费报告</div><div id="finMonthlyReport"></div></div>
+      <!-- 分类支出统计 -->
+      <div class="card"><div class="card-title">📊 <span id="finReportMonth">本月</span>分类支出 <span style="font-size:12px;color:var(--text-light);font-weight:400">（点击查看明细）</span></div><div id="finCategoryStats"></div></div>
 
+      <!-- 支出趋势 + 分类占比 -->
       <div class="two-col">
-        <div class="card"><div class="card-title">收支对比</div><div class="chart-container"><canvas id="financeBarChart"></canvas></div></div>
-        <div class="card"><div class="card-title">支出分类占比</div><div class="chart-container"><canvas id="financePieChart"></canvas></div></div>
+        <div class="card"><div class="card-title">📈 支出趋势 <div class="tab-group"><button class="tab" onclick="switchFinanceTab('week')">周</button><button class="tab active" onclick="switchFinanceTab('month')">月</button><button class="tab" onclick="switchFinanceTab('year')">年</button></div></div><div class="chart-container"><canvas id="financeTrendChart"></canvas></div></div>
+        <div class="card"><div class="card-title">🥧 支出分类占比</div><div class="chart-container"><canvas id="financePieChart"></canvas></div></div>
       </div>
+
+      <!-- 月度消费报告 -->
+      <div class="card"><div class="card-title">📋 <span id="finReportTitle">本月</span>消费报告</div><div id="finMonthlyReport"></div></div>
 
       <!-- 品牌追踪 -->
       <div class="card"><div class="card-title">🏷️ 物品品牌追踪</div><div id="finBrandTracker"></div></div>
 
-      <!-- 开源节流建议 -->
-      <div class="card"><div class="card-title">💡 开源节流建议</div><div id="finSuggestions"></div></div>
-
-      <!-- 账目明细 -->
-      <div class="card"><div class="card-title">账目明细</div>
-        <div class="table-wrap"><table id="financeTable"><thead><tr><th>日期</th><th>类型</th><th>分类</th><th>物品</th><th>金额</th><th>图</th><th></th></tr></thead><tbody></tbody></table></div>
+      <!-- 账目明细（带搜索） -->
+      <div class="card"><div class="card-title">账目明细 <input type="text" id="finSearchInput" placeholder="🔍 搜索产品名/品牌..." oninput="renderFinanceTable()" style="font-size:13px;padding:4px 10px;width:220px;border:1px solid #ddd;border-radius:6px;margin-left:auto"></div>
+        <div class="table-wrap"><table id="financeTable"><thead><tr><th>日期</th><th>分类</th><th>物品</th><th>金额</th><th>图</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -521,10 +556,11 @@ function loadData() {
       if (d.prePregWeight === undefined) d.prePregWeight = null;
       if (!d.diets) d.diets = [];
       if (!d.finances) d.finances = [];
+      if (!d.budget) d.budget = {};
       return d;
     }
   } catch(e) {}
-  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: null, checkups: [], postpartums: [] };
+  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: null, checkups: [], postpartums: [], budget: {} };
 }
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function todayStr() { const d=new Date(); const tz=d.getTimezoneOffset()*60000; return new Date(d-tz).toISOString().slice(0,10); }
@@ -1169,106 +1205,241 @@ function renderDietWeeklyReport(weekItems, target) {
     </div>`;
 }
 
-// ========== 记账模块 v3 ==========
-const FINANCE_CATEGORIES = {
-  '支出':['餐饮','交通','购物','住房','娱乐','医疗','教育','日用','母婴','其他'],
-  '收入':['工资','奖金','兼职','投资','红包','其他']
-};
-function updateFinCategories(){const t=document.getElementById('finType').value;document.getElementById('finCategory').innerHTML=FINANCE_CATEGORIES[t].map(c=>`<option value="${c}">${c}</option>`).join('');}
-function toggleFinItemFields(){
-  const type=document.getElementById('finType').value;
-  document.getElementById('finItemFields').style.display=type==='支出'?'block':'none';
+// ========== 记账模块 v4（预算+统计版） ==========
+const FINANCE_CATEGORIES = ['餐饮','交通','购物','住房','娱乐','医疗','教育','日用','母婴','其他'];
+const CAT_ICONS = {'餐饮':'🍽️','交通':'🚌','购物':'🛍️','住房':'🏠','娱乐':'🎮','医疗':'💊','教育':'📚','日用':'🧴','母婴':'🍼','其他':'📦'};
+const CAT_COLORS = {'餐饮':'#f59e0b','交通':'#3b82f6','购物':'#ec4899','住房':'#8b5cf6','娱乐':'#10b981','医疗':'#ef4444','教育':'#6366f1','日用':'#14b8a6','母婴':'#f97316','其他':'#6b7280'};
+
+function getBudget(ym) { return data.budget && data.budget[ym] ? data.budget[ym] : null; }
+function setBudget(ym, amount) { if(!data.budget) data.budget = {}; data.budget[ym] = amount; saveData(); }
+
+function updateFinCategories(){
+  document.getElementById('finCategory').innerHTML = FINANCE_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
+
+function showBudgetSetter() {
+  const ym = new Date().toISOString().slice(0,7);
+  const current = getBudget(ym);
+  const input = prompt(`设置 ${ym} 月的预算金额（元）：\n\n例如：3000`, current || '');
+  if (input !== null) {
+    const amount = parseFloat(input);
+    if (!isNaN(amount) && amount > 0) {
+      setBudget(ym, amount);
+      showToast('预算已设置');
+      renderFinance();
+    }
+  }
+}
+
 function addFinance() {
   const date=document.getElementById('finDate').value;
-  const type=document.getElementById('finType').value;
   const category=document.getElementById('finCategory').value;
   const amount=parseFloat(document.getElementById('finAmount').value);
   const note=document.getElementById('finNote').value.trim();
   if(!date||!amount){showToast('请填写日期和金额');return;}
-  const record={id:Date.now(),date,type,category,amount,note,photo:finPhotoData};
-  if(type==='支出'){
-    record.pname=document.getElementById('finPname').value.trim();
-    record.brand=document.getElementById('finBrand').value.trim();
-    record.spec=document.getElementById('finSpec').value.trim();
-    record.qty=document.getElementById('finQty').value.trim();
-  }
+  const record={id:Date.now(),date,type:'支出',category,amount,note,photo:finPhotoData};
+  record.pname=document.getElementById('finPname').value.trim();
+  record.brand=document.getElementById('finBrand').value.trim();
+  record.spec=document.getElementById('finSpec').value.trim();
+  record.qty=document.getElementById('finQty').value.trim();
   data.finances.push(record);
   saveData();
   document.getElementById('finAmount').value='';document.getElementById('finNote').value='';
   document.getElementById('finPname').value='';document.getElementById('finBrand').value='';
   document.getElementById('finSpec').value='';document.getElementById('finQty').value='';
   clearFinPhoto();
-  showToast('账目已添加'); renderFinance();
+  showToast('支出已添加'); renderFinance();
 }
 function deleteFinance(id){data.finances=data.finances.filter(f=>f.id!==id);saveData();renderFinance();}
+
+// 当前 tab 状态
+let finTrendTab = 'month';
+
+function isExpense(f) { return !f.type || f.type === '支出'; }
+
 function renderFinance() {
   const now=new Date();const ym=now.toISOString().slice(0,7);
   const lastMonth=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,7);
   const monthItems=data.finances.filter(f=>f.date.startsWith(ym));
   const lastMonthItems=data.finances.filter(f=>f.date.startsWith(lastMonth));
-  const income=monthItems.filter(f=>f.type==='收入').reduce((s,f)=>s+f.amount,0);
-  const expense=monthItems.filter(f=>f.type==='支出').reduce((s,f)=>s+f.amount,0);
-  const lastExpense=lastMonthItems.filter(f=>f.type==='支出').reduce((s,f)=>s+f.amount,0);
+  const expense=monthItems.filter(isExpense).reduce((s,f)=>s+f.amount,0);
+  const lastExpense=lastMonthItems.filter(isExpense).reduce((s,f)=>s+f.amount,0);
   const expenseChange=lastExpense>0?((expense-lastExpense)/lastExpense*100).toFixed(1):0;
+  const budget = getBudget(ym);
+  const usedPct = budget ? Math.min(100, (expense/budget*100)) : 0;
 
   document.getElementById('finReportMonth').textContent=`${ym}年`;
+  document.getElementById('finReportTitle').textContent=`${ym}年`;
+
+  // 预算统计卡片
+  const budgetHtml = budget ?
+    `<div class="stat-card pink-border" style="cursor:pointer" onclick="showBudgetSetter()"><div class="stat-label">本月预算</div><div class="stat-value primary">¥${budget.toFixed(0)}</div><div class="stat-trend">点击修改</div></div>` :
+    `<div class="stat-card pink-border" style="cursor:pointer" onclick="showBudgetSetter()"><div class="stat-label">本月预算</div><div class="stat-value" style="color:var(--text-light)">未设置</div><div class="stat-trend">点击设置</div></div>`;
+
+  const budgetBarHtml = budget ? `<div class="budget-progress"><div class="budget-progress-bar ${usedPct>100?'danger':usedPct>80?'warning':'normal'}" style="width:${usedPct}%"></div></div>` : '';
+
+  const remainHtml = budget ?
+    `<div class="stat-value ${expense>budget?'red':'green'}">¥${Math.abs(budget-expense).toFixed(2)}</div><div class="stat-trend">${expense>budget?'已超支':'剩余'}</div>${budgetBarHtml}` :
+    `<div class="stat-value" style="color:var(--text-light)">—</div><div class="stat-trend">未设预算</div>`;
+
   document.getElementById('financeStats').innerHTML=`
-    <div class="stat-card"><div class="stat-label">本月收入</div><div class="stat-value green">¥${income.toFixed(2)}</div></div>
+    ${budgetHtml}
     <div class="stat-card"><div class="stat-label">本月支出</div><div class="stat-value red">¥${expense.toFixed(2)}</div><div class="stat-trend">${expenseChange>0?`↑${expenseChange}% vs 上月`:`↓${Math.abs(expenseChange)}% vs 上月`}</div></div>
-    <div class="stat-card"><div class="stat-label">本月结余</div><div class="stat-value ${income-expense>=0?'green':'red'}">¥${(income-expense).toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-label">${expense>budget?'超支':'剩余预算'}</div>${remainHtml}</div>
     <div class="stat-card"><div class="stat-label">本月记录</div><div class="stat-value primary">${monthItems.length}</div></div>`;
 
-  // 月度报告
-  const reportEl=document.getElementById('finMonthlyReport');
-  const expByCat={};monthItems.filter(f=>f.type==='支出').forEach(f=>{expByCat[f.category]=(expByCat[f.category]||0)+f.amount;});
-  const topCats=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  // 品牌统计
-  const brandStats={};monthItems.filter(f=>f.type==='支出'&&f.pname).forEach(f=>{
-    const key=f.pname+'|'+(f.brand||'');
-    if(!brandStats[key])brandStats[key]={pname:f.pname,brand:f.brand||'',spec:f.spec||'',total:0,count:0,prices:[]};
-    brandStats[key].total+=f.amount;brandStats[key].count++;brandStats[key].prices.push(f.amount);
-  });
-  const topBrands=Object.values(brandStats).sort((a,b)=>b.total-a.total).slice(0,5);
-  reportEl.innerHTML=`
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">📌 Top 5 消费品类</div>
-    <div style="margin-bottom:16px">${topCats.map(([c,a],i)=>`<div class="brand-row"><div class="brand-info"><div class="brand-name">${i+1}. ${c}</div></div><div class="brand-price"><div class="bp-main">¥${a.toFixed(2)}</div><div class="bp-compare">${(a/expense*100).toFixed(0)}%</div></div></div>`).join('')||'<div class="empty">暂无数据</div>'}</div>
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">🏷️ 最常买品牌 Top 5</div>
-    <div>${topBrands.map(b=>`<div class="brand-row"><div class="brand-info"><div class="brand-name">${b.pname} — ${b.brand}</div><div class="brand-detail">${b.spec} · 购买${b.count}次</div></div><div class="brand-price"><div class="bp-main">¥${b.total.toFixed(2)}</div><div class="bp-compare">均价¥${(b.total/b.count).toFixed(2)}</div></div></div>`).join('')||'<div class="empty">暂无数据</div>'}</div>`;
+  // 分类统计
+  renderCategoryStats(monthItems, expense);
 
   // 表格
-  const tbody=document.querySelector('#financeTable tbody');
-  if(data.finances.length===0){tbody.innerHTML='<tr><td colspan="7" class="empty">还没有账目记录</td></tr>';}
-  else{tbody.innerHTML=data.finances.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(f=>{
-    const itemStr=f.type==='支出'&&f.pname?`${f.pname}${f.brand?' / '+f.brand:''}${f.spec?' '+f.spec:''}${f.qty?' '+f.qty:''}`:'-';
-    return `<tr><td>${f.date}</td><td><span class="tag ${f.type==='收入'?'tag-income':'tag-expense'}">${f.type}</span></td><td>${f.category}</td><td style="font-size:13px">${itemStr}</td><td style="color:${f.type==='收入'?'var(--green)':'var(--red)'};font-weight:600">${f.type==='收入'?'+':'-'}¥${f.amount.toFixed(2)}</td><td>${f.photo?`<img class="thumb" src="${f.photo}" onclick="showImgModal('${f.photo}')">`:'-'}</td><td><button class="btn-danger" onclick="deleteFinance(${f.id})">删除</button></td></tr>`;
-  }).join('');}
+  renderFinanceTable();
 
-  // 柱状图
-  if(charts.finBar)charts.finBar.destroy();
-  const d7=getLastNDays(7);
-  charts.finBar=new Chart(document.getElementById('financeBarChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'收入',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='收入').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#10b981',borderRadius:6},{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='支出').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#ef4444',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
+  // 趋势图
+  renderFinanceTrendChart();
 
   // 饼图
   if(charts.finPie)charts.finPie.destroy();
-  const ec={};monthItems.filter(f=>f.type==='支出').forEach(f=>{ec[f.category]=(ec[f.category]||0)+f.amount;});
+  const ec={};monthItems.filter(isExpense).forEach(f=>{ec[f.category]=(ec[f.category]||0)+f.amount;});
   const pl=Object.keys(ec);
-  if(pl.length>0){charts.finPie=new Chart(document.getElementById('financePieChart'),{type:'doughnut',data:{labels:pl,datasets:[{data:Object.values(ec),backgroundColor:['#ec4899','#10b981','#f59e0b','#ef4444','#8b5cf6','#6366f1','#14b8a6','#f97316','#84cc16','#e11d48']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}});}
+  if(pl.length>0){charts.finPie=new Chart(document.getElementById('financePieChart'),{type:'doughnut',data:{labels:pl,datasets:[{data:Object.values(ec),backgroundColor:pl.map(c=>CAT_COLORS[c]||'#999')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}});}
 
   // 品牌追踪
   renderBrandTracker();
-  // 开源节流建议
-  renderFinanceSuggestions(monthItems, lastMonthItems, expByCat, expense, lastExpense);
+  // 月度报告
+  renderMonthlyReport(monthItems, lastMonthItems, expense, lastExpense, budget);
 }
 
+// 分类统计
+function renderCategoryStats(monthItems, totalExpense) {
+  const el = document.getElementById('finCategoryStats');
+  const byCat = {};
+  monthItems.filter(isExpense).forEach(f => { byCat[f.category] = (byCat[f.category]||0) + f.amount; });
+  const sorted = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  if (sorted.length === 0) { el.innerHTML = '<div class="empty">本月暂无支出记录</div>'; return; }
+  el.innerHTML = sorted.map(([cat, amt]) => {
+    const pct = totalExpense > 0 ? (amt/totalExpense*100).toFixed(1) : 0;
+    const color = CAT_COLORS[cat] || '#999';
+    const icon = CAT_ICONS[cat] || '📦';
+    return `<div class="cat-row" onclick="showCategoryDetail('${cat}')">
+      <div class="cat-icon" style="background:${color}20">${icon}</div>
+      <div class="cat-info">
+        <div class="cat-name">${cat}</div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>
+      <div class="cat-amount"><div class="amt">¥${amt.toFixed(2)}</div><div class="pct">${pct}%</div></div>
+    </div>`;
+  }).join('');
+}
+
+// 分类明细弹窗
+function showCategoryDetail(cat) {
+  const ym = new Date().toISOString().slice(0,7);
+  const items = data.finances.filter(f => f.date.startsWith(ym) && isExpense(f) && f.category === cat)
+    .sort((a,b) => b.date.localeCompare(a.date));
+  const total = items.reduce((s,f) => s+f.amount, 0);
+  const tbody = document.getElementById('aiResultTbody');
+  document.querySelector('.ai-result-content .modal-title').innerHTML = `📊 ${cat} - ${ym}明细 <span style="cursor:pointer;font-size:24px" onclick="closeAIResultModal()">&times;</span>`;
+  document.querySelector('.ai-result-content .modal-subtitle').textContent = `共 ${items.length} 笔，合计 ¥${total.toFixed(2)}`;
+  tbody.innerHTML = items.map(f => `
+    <tr>
+      <td>${f.pname || f.note || '(无名称)'} ${f.brand ? '/ '+f.brand : ''} ${f.spec ? ' '+f.spec : ''} ${f.qty ? ' '+f.qty : ''}</td>
+      <td>${f.date}</td>
+      <td><input type="text" value="${f.amount.toFixed(2)}" readonly style="text-align:right;background:transparent;border:none;font-weight:600;color:var(--red)"></td>
+      <td>${f.note || ''}</td>
+      <td><button class="btn-danger" onclick="deleteFinance(${f.id});closeAIResultModal();">删除</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" class="empty">暂无记录</td></tr>';
+  document.getElementById('aiResultTotal').textContent = `合计：¥${total.toFixed(2)}（${items.length} 笔）`;
+  document.querySelector('.ai-result-actions').innerHTML = '<button class="btn outline" onclick="closeAIResultModal()">关闭</button>';
+  document.getElementById('aiResultModal').classList.add('show');
+}
+
+// 账目明细表格（带搜索）
+function renderFinanceTable() {
+  const tbody = document.querySelector('#financeTable tbody');
+  const search = (document.getElementById('finSearchInput')?.value || '').trim().toLowerCase();
+  let items = data.finances.slice().sort((a,b) => b.date.localeCompare(a.date));
+  if (search) {
+    items = items.filter(f => {
+      const text = [f.pname, f.brand, f.note, f.category, f.spec].join(' ').toLowerCase();
+      return text.includes(search);
+    });
+  }
+  if (items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">${search ? '没有找到匹配的记录' : '还没有账目记录'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = items.map(f => {
+    const itemStr = f.pname ? `${f.pname}${f.brand?' / '+f.brand:''}${f.spec?' '+f.spec:''}${f.qty?' '+f.qty:''}` : (f.note || '-');
+    const isInc = f.type === '收入';
+    const highlight = (text) => {
+      if (!search) return text;
+      const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+      return text.replace(regex, '<mark style="background:#fef08a;padding:0 2px">$1</mark>');
+    };
+    return `<tr><td>${f.date}</td><td>${f.category}</td><td style="font-size:13px">${highlight(itemStr)}</td><td style="color:${isInc?'var(--green)':'var(--red)'};font-weight:600">${isInc?'+':'-'}¥${f.amount.toFixed(2)}</td><td>${f.photo?`<img class="thumb" src="${f.photo}" onclick="showImgModal('${f.photo}')">`:'-'}</td><td><button class="btn-danger" onclick="deleteFinance(${f.id})">删除</button></td></tr>`;
+  }).join('');
+}
+
+// 趋势图（周/月/年）
+function switchFinanceTab(period) {
+  finTrendTab = period;
+  document.querySelectorAll('.tab-group .tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderFinanceTrendChart();
+}
+
+function renderFinanceTrendChart() {
+  if (charts.finTrend) charts.finTrend.destroy();
+  const ctx = document.getElementById('financeTrendChart');
+  if (!ctx) return;
+  const now = new Date();
+  let labels = [], dataPoints = [], chartType = 'bar';
+
+  if (finTrendTab === 'week') {
+    const d7 = getLastNDays(7);
+    labels = d7.map(d => d.slice(5));
+    dataPoints = d7.map(d => data.finances.filter(f => f.date === d && isExpense(f)).reduce((s,f) => s+f.amount, 0));
+  } else if (finTrendTab === 'month') {
+    // 本月按周分组
+    const y = now.getFullYear(), m = now.getMonth();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const weeks = [];
+    for (let d=1; d<=daysInMonth; d+=7) {
+      const end = Math.min(d+6, daysInMonth);
+      weeks.push({ label: `${m+1}.${d}-${end}`, start: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, end: `${y}-${String(m+1).padStart(2,'0')}-${String(end).padStart(2,'0')}` });
+    }
+    labels = weeks.map(w => w.label);
+    dataPoints = weeks.map(w => data.finances.filter(f => f.date >= w.start && f.date <= w.end && isExpense(f)).reduce((s,f) => s+f.amount, 0));
+  } else {
+    // 年：12个月折线图
+    chartType = 'line';
+    labels = [];
+    for (let i=0; i<12; i++) {
+      labels.push(`${i+1}月`);
+    }
+    const yearStr = now.getFullYear().toString();
+    dataPoints = [];
+    for (let i=1; i<=12; i++) {
+      const mStr = `${yearStr}-${String(i).padStart(2,'0')}`;
+      dataPoints.push(data.finances.filter(f => f.date.startsWith(mStr) && isExpense(f)).reduce((s,f) => s+f.amount, 0));
+    }
+  }
+
+  charts.finTrend = new Chart(ctx, {
+    type: chartType,
+    data: { labels, datasets: [{ label: '支出', data: dataPoints, backgroundColor: chartType==='bar' ? '#ec4899' : 'rgba(236,72,153,0.1)', borderColor: '#ec4899', borderWidth: 2, fill: chartType==='line', tension: 0.3, borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+}
+
+// 品牌追踪
 function renderBrandTracker() {
   const trackerEl=document.getElementById('finBrandTracker');
-  const expenses=data.finances.filter(f=>f.type==='支出'&&f.pname);
+  const expenses=data.finances.filter(f=>isExpense(f)&&f.pname);
   if(expenses.length===0){trackerEl.innerHTML='<div class="empty">暂无物品记录</div>';return;}
-  // 按 pname 聚合
   const byName={};expenses.forEach(f=>{if(!byName[f.pname])byName[f.pname]=[];byName[f.pname].push(f);});
   const html=Object.entries(byName).sort((a,b)=>b[1].length-a[1].length).slice(0,10).map(([pname,items])=>{
-    // 按品牌分组
     const byBrand={};items.forEach(f=>{const b=f.brand||'无品牌';if(!byBrand[b])byBrand[b]={spec:f.spec||'',total:0,count:0,prices:[],dates:[]};byBrand[b].total+=f.amount;byBrand[b].count++;byBrand[b].prices.push(f.amount);byBrand[b].dates.push(f.date);});
     const brandHtml=Object.entries(byBrand).map(([b,info])=>{
       const avg=(info.total/info.count).toFixed(2);
@@ -1279,51 +1450,128 @@ function renderBrandTracker() {
   trackerEl.innerHTML=html;
 }
 
-function renderFinanceSuggestions(monthItems, lastMonthItems, expByCat, expense, lastExpense) {
-  const suggEl=document.getElementById('finSuggestions');
-  const suggestions=[];
-  // 1. 环比增长
-  if(lastExpense>0){
-    const change=((expense-lastExpense)/lastExpense*100);
-    if(change>20){suggestions.push({type:'orange',icon:'⚠️',text:`本月总支出比上月多 ¥${(expense-lastExpense).toFixed(2)}（+${change.toFixed(1)}%），建议关注增长原因`});}
-    else if(change<-10){suggestions.push({type:'green',icon:'✅',text:`本月支出比上月少 ¥${(lastExpense-expense).toFixed(2)}（${change.toFixed(1)}%），控制得不错！`});}
-  }
-  // 2. 分类占比过高
-  if(expense>0){
-    const total=expense;
-    for(const [cat,amt] of Object.entries(expByCat)){
-      const ratio=amt/total*100;
-      if(ratio>30&&cat!=='住房'){suggestions.push({type:'orange',icon:'📊',text:`${cat}支出占比 ${ratio.toFixed(0)}%（¥${amt.toFixed(2)}），偏高，可考虑适当控制`});}
-    }
-    // 餐饮占比
-    const foodRatio=(expByCat['餐饮']||0)/total*100;
-    if(foodRatio>25){suggestions.push({type:'orange',icon:'🍽️',text:`餐饮支出占比 ${foodRatio.toFixed(0)}%，可尝试增加自己做饭的频率，预计每月可节省 ¥${((expByCat['餐饮']||0)*0.3).toFixed(0)}`});}
-  }
-  // 3. 同类物品品牌比价
-  const expenses=data.finances.filter(f=>f.type==='支出'&&f.pname);
-  const byName={};expenses.forEach(f=>{if(!byName[f.pname])byName[f.pname]={};const b=f.brand||'无';if(!byName[f.pname][b])byName[f.pname][b]={prices:[],spec:f.spec};byName[f.pname][b].prices.push(f.amount);});
-  for(const [pname,brands] of Object.entries(byName)){
-    const brandList=Object.entries(brands);
-    if(brandList.length>=2){
-      const avgs=brandList.map(([b,info])=>({brand:b,avg:info.prices.reduce((s,p)=>s+p,0)/info.prices.length}));
-      avgs.sort((a,b)=>a.avg-b.avg);
-      const cheapest=avgs[0],mostExpensive=avgs[avgs.length-1];
-      if(mostExpensive.avg>cheapest.avg*1.15){
-        const monthlyCount=Math.max(1,Math.round(brandList.reduce((s,[,info])=>s+info.prices.length,0)/3));
-        const save=(mostExpensive.avg-cheapest.avg)*monthlyCount;
-        suggestions.push({type:'green',icon:'💡',text:`${pname}：${cheapest.brand}（均价¥${cheapest.avg.toFixed(2)}）比${mostExpensive.brand}（¥${mostExpensive.avg.toFixed(2)}）便宜，切换可月省约 ¥${save.toFixed(0)}`});
+// 月度消费报告
+function renderMonthlyReport(monthItems, lastMonthItems, expense, lastExpense, budget) {
+  const el = document.getElementById('finMonthlyReport');
+  const ym = new Date().toISOString().slice(0,7);
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const dailyAvg = dayOfMonth > 0 ? (expense / dayOfMonth).toFixed(2) : '0';
+  const change = lastExpense > 0 ? ((expense - lastExpense) / lastExpense * 100).toFixed(1) : null;
+
+  // 按分类聚合
+  const expByCat = {};
+  monthItems.filter(isExpense).forEach(f => { expByCat[f.category] = (expByCat[f.category]||0) + f.amount; });
+
+  // Part 2: 必买物品（本月和上月都买过的）
+  const thisPnames = new Set(monthItems.filter(isExpense).filter(f=>f.pname).map(f => f.pname));
+  const lastPnames = new Set(lastMonthItems.filter(isExpense).filter(f=>f.pname).map(f => f.pname));
+  const mustBuy = [...thisPnames].filter(p => lastPnames.has(p));
+
+  // Part 3: 用量分析
+  const usageThis = {}; monthItems.filter(isExpense).filter(f=>f.pname).forEach(f => {
+    if(!usageThis[f.pname]) usageThis[f.pname] = { count: 0, total: 0, qty: [] };
+    usageThis[f.pname].count++;
+    usageThis[f.pname].total += f.amount;
+    if(f.qty) usageThis[f.pname].qty.push(f.qty);
+  });
+  const usageLast = {}; lastMonthItems.filter(isExpense).filter(f=>f.pname).forEach(f => {
+    if(!usageLast[f.pname]) usageLast[f.pname] = { count: 0, total: 0 };
+    usageLast[f.pname].count++;
+    usageLast[f.pname].total += f.amount;
+  });
+
+  // Part 4: 节省建议
+  const suggestions = [];
+
+  // 品牌比价
+  const byName = {}; data.finances.filter(isExpense).filter(f=>f.pname).forEach(f => {
+    if(!byName[f.pname]) byName[f.pname] = {};
+    const b = f.brand || '无';
+    if(!byName[f.pname][b]) byName[f.pname][b] = [];
+    byName[f.pname][b].push(f.amount);
+  });
+  for(const [pname, brands] of Object.entries(byName)) {
+    const brandList = Object.entries(brands);
+    if(brandList.length >= 2) {
+      const avgs = brandList.map(([b, prices]) => ({ brand: b, avg: prices.reduce((s,p)=>s+p,0)/prices.length }));
+      avgs.sort((a,b) => a.avg - b.avg);
+      if(avgs[avgs.length-1].avg > avgs[0].avg * 1.15) {
+        suggestions.push({ type: 'green', text: `${pname}：${avgs[0].brand}（均价¥${avgs[0].avg.toFixed(2)}）比${avgs[avgs.length-1].brand}（¥${avgs[avgs.length-1].avg.toFixed(2)}）便宜，切换可省钱` });
       }
     }
   }
-  // 4. 固定支出识别
-  const fixedItems={};expenses.forEach(f=>{const m=f.date.slice(0,7);const k=f.pname;if(!fixedItems[k])fixedItems[k]={months:new Set()};fixedItems[k].months.add(m);});
-  const fixed=Object.entries(fixedItems).filter(([,v])=>v.months.size>=2).map(([k])=>k);
-  if(fixed.length>0){suggestions.push({type:'green',icon:'📌',text:`识别到固定消费：${fixed.join('、')}，建议关注价格波动，可趁促销囤货`});}
-  // 5. 结余率
-  const income=monthItems.filter(f=>f.type==='收入').reduce((s,f)=>s+f.amount,0);
-  if(income>0){const saveRate=(income-expense)/income*100;if(saveRate<10)suggestions.push({type:'orange',icon:'💰',text:`本月结余率仅 ${saveRate.toFixed(1)}%，建议控制在 20% 以上作为储蓄`});}
 
-  suggEl.innerHTML=suggestions.length>0?suggestions.map(s=>`<div class="suggest-card ${s.type}"><h4>${s.icon} ${s.text}</h4></div>`).join(''):'<div class="empty">暂无建议，继续记录消费数据获取分析</div>';
+  // 预算预警
+  if(budget && expense/budget > 0.8) {
+    suggestions.push({ type: 'warn', text: `已用预算的 ${(expense/budget*100).toFixed(0)}%，注意控制后续支出` });
+  }
+
+  // 环比异常
+  if(change && parseFloat(change) > 30) {
+    suggestions.push({ type: 'warn', text: `本月支出环比增长 ${change}%，建议查看分类明细找出原因` });
+  }
+
+  // 囤货提示
+  for(const pname of Object.keys(usageThis)) {
+    if(usageLast[pname] && usageThis[pname].count > usageLast[pname].count * 1.5 && usageThis[pname].count >= 3) {
+      suggestions.push({ type: 'warn', text: `${pname}本月买了${usageThis[pname].count}次（上月${usageLast[pname].count}次），可能买多了` });
+    }
+  }
+
+  // 渲染
+  let html = '<div class="report-section"><h4>📌 总览</h4>';
+  html += `<div class="report-item"><span class="ri-label">本月总支出</span><span class="ri-value red">¥${expense.toFixed(2)}</span></div>`;
+  if(budget) {
+    html += `<div class="report-item"><span class="ri-label">月预算</span><span class="ri-value">¥${budget.toFixed(0)}（已用${(expense/budget*100).toFixed(0)}%）</span></div>`;
+    html += `<div class="report-item"><span class="ri-label">结余</span><span class="ri-value ${expense>budget?'red':'green'}">¥${(budget-expense).toFixed(2)}</span></div>`;
+  }
+  html += `<div class="report-item"><span class="ri-label">日均支出</span><span class="ri-value">¥${dailyAvg}</span></div>`;
+  if(change) {
+    html += `<div class="report-item"><span class="ri-label">环比上月</span><span class="ri-value ${parseFloat(change)>0?'red':'green'}">${parseFloat(change)>0?'↑':'↓'}${Math.abs(change)}%</span></div>`;
+  }
+  html += '</div>';
+
+  // 必买清单
+  if(mustBuy.length > 0) {
+    html += '<div class="report-section"><h4>🛒 每月必买物品</h4>';
+    mustBuy.forEach(p => {
+      const t = usageThis[p] || { total: 0, count: 0 };
+      const l = usageLast[p] || { total: 0, count: 0 };
+      const priceChange = l.total > 0 ? ((t.total - l.total) / l.total * 100).toFixed(0) : null;
+      html += `<div class="report-item"><span class="ri-label">${p}</span><span class="ri-value">¥${t.total.toFixed(2)}（${t.count}次）${priceChange ? `<span class="report-tag ${parseFloat(priceChange)>0?'up':'down'}">${parseFloat(priceChange)>0?'+':''}${priceChange}%</span>` : ''}</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  // 用量分析
+  const usageItems = Object.entries(usageThis).filter(([,v]) => v.count > 0).sort((a,b) => b[1].total - a[1].total).slice(0, 8);
+  if(usageItems.length > 0) {
+    html += '<div class="report-section"><h4>📊 用量分析</h4>';
+    usageItems.forEach(([pname, info]) => {
+      const last = usageLast[pname];
+      const countChange = last ? info.count - last.count : null;
+      let tag = '';
+      if(countChange !== null && countChange !== 0) {
+        tag = `<span class="report-tag ${countChange>0?'up':'down'}">${countChange>0?'↑':'↓'}${Math.abs(countChange)}次</span>`;
+      }
+      html += `<div class="report-item"><span class="ri-label">${pname}</span><span class="ri-value">本月${info.count}次 ¥${info.total.toFixed(2)} ${tag}</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  // 节省建议
+  if(suggestions.length > 0) {
+    html += '<div class="report-section"><h4>💡 节省建议</h4>';
+    suggestions.forEach(s => {
+      html += `<div class="report-item"><span class="ri-label">${s.text}</span></div>`;
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="report-section"><h4>💡 节省建议</h4><div class="report-item"><span class="ri-label" style="color:var(--green)">暂无异常，消费记录良好 ✅</span></div></div>';
+  }
+
+  el.innerHTML = html;
 }
 
 // ========== 运动模块 ==========
@@ -1360,7 +1608,7 @@ function renderDashboard(){
   const todayEx=data.exercises.filter(e=>e.date===today);
   const todayExCal=todayEx.reduce((s,e)=>s+e.calories,0);
   const ym=new Date().toISOString().slice(0,7);
-  const monthExp=data.finances.filter(f=>f.date.startsWith(ym)&&f.type==='支出').reduce((s,f)=>s+f.amount,0);
+  const monthExp=data.finances.filter(f=>f.date.startsWith(ym)&&(!f.type||f.type==='支出')).reduce((s,f)=>s+f.amount,0);
   const target=getCalorieTarget();
   const lastCu=data.checkups.length>0?data.checkups[0]:null;
   document.getElementById('dashboardStats').innerHTML=`
@@ -1372,7 +1620,7 @@ function renderDashboard(){
   if(data.weights.length>0){charts.dashWeight=new Chart(document.getElementById('dashWeightChart'),{type:'line',data:{labels:data.weights.map(w=>w.date.slice(5)),datasets:[{label:'体重(kg)',data:data.weights.map(w=>w.value),borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.1)',fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});}
   if(charts.dashFin)charts.dashFin.destroy();
   const d7=getLastNDays(7);
-  charts.dashFin=new Chart(document.getElementById('dashFinanceChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'收入',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='收入').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#10b981',borderRadius:6},{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&f.type==='支出').reduce((s,f)=>s+f.amount,0)),backgroundColor:'#ef4444',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
+  charts.dashFin=new Chart(document.getElementById('dashFinanceChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'支出',data:d7.map(d=>data.finances.filter(f=>f.date===d&&(!f.type||f.type==='支出')).reduce((s,f)=>s+f.amount,0)),backgroundColor:'#ef4444',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
   if(charts.dashCal)charts.dashCal.destroy();
   charts.dashCal=new Chart(document.getElementById('dashCaloriesChart'),{type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'摄入(kcal)',data:d7.map(d=>data.diets.filter(di=>di.date===d).reduce((s,di)=>s+di.calories,0)),backgroundColor:'#f59e0b',borderRadius:6},{label:'运动消耗(kcal)',data:d7.map(d=>data.exercises.filter(e=>e.date===d).reduce((s,e)=>s+e.calories,0)),backgroundColor:'#10b981',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false}});
 }
@@ -1388,8 +1636,17 @@ function renderAll(){renderDashboard();renderPregnancy();renderWeight();renderDi
 const today=todayStr();
 ['weightDate','dietDate','finDate','exDate','cuDate','ppDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
 updateFinCategories();
-toggleFinItemFields();
 renderAll();
+
+// 首次进入记账页面时引导设置预算
+const ym = new Date().toISOString().slice(0,7);
+if (!getBudget(ym)) {
+  setTimeout(() => {
+    if (confirm('检测到您还未设置本月预算，是否现在设置？')) {
+      showBudgetSetter();
+    }
+  }, 1500);
+}
 </script>
 </body>
 </html>
