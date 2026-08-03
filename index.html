@@ -509,9 +509,9 @@ tr:hover { background:var(--primary-bg); }
       <!-- 品牌追踪 -->
       <div class="card"><div class="card-title">🏷️ 物品品牌追踪</div><div id="finBrandTracker"></div></div>
 
-      <!-- 账目明细（带搜索） -->
-      <div class="card"><div class="card-title">账目明细 <input type="text" id="finSearchInput" placeholder="🔍 搜索产品名/品牌..." oninput="renderFinanceTable()" style="font-size:13px;padding:4px 10px;width:220px;border:1px solid #ddd;border-radius:6px;margin-left:auto"></div>
-        <div class="table-wrap"><table id="financeTable"><thead><tr><th>日期</th><th>分类</th><th>物品</th><th>金额</th><th>图</th><th></th></tr></thead><tbody></tbody></table></div>
+      <!-- 账目明细（带搜索+分组折叠） -->
+      <div class="card"><div class="card-title">账目明细 <input type="text" id="finSearchInput" placeholder="🔍 搜索产品名/品牌..." oninput="renderFinanceTable()" style="font-size:13px;padding:6px 12px;width:200px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-left:auto;background:#fafafa"></div>
+        <div id="finTableContainer"></div>
       </div>
     </div>
 
@@ -905,7 +905,7 @@ async function aiRecognizeFinance() {
             spec: (item.spec || '').toString().trim(),
             brand: (item.brand || '').toString().trim(),
             qty: item.qty === undefined || item.qty === null ? '' : item.qty.toString(),
-            category: item.category && FINANCE_CATEGORIES['支出'].includes(item.category) ? item.category : '日用'
+            category: item.category && FINANCE_CATEGORIES.includes(item.category) ? item.category : '日用家居'
           })).filter(item => item.pname && item.amount >= 0)
         };
         showAIResultModal();
@@ -1366,12 +1366,16 @@ function renderDietWeeklyReport(weekItems, target) {
 }
 
 // ========== 记账模块 v4（预算+统计版） ==========
-const FINANCE_CATEGORIES = ['餐饮','交通','购物','住房','娱乐','医疗','教育','日用','母婴','其他'];
-const CAT_ICONS = {'餐饮':'🍽️','交通':'🚌','购物':'🛍️','住房':'🏠','娱乐':'🎮','医疗':'💊','教育':'📚','日用':'🧴','母婴':'🍼','其他':'📦'};
-const CAT_COLORS = {'餐饮':'#f59e0b','交通':'#3b82f6','购物':'#ec4899','住房':'#8b5cf6','娱乐':'#10b981','医疗':'#ef4444','教育':'#6366f1','日用':'#14b8a6','母婴':'#f97316','其他':'#6b7280'};
+const FINANCE_CATEGORIES = ['餐饮','生鲜食材','零食饮料','日用家居','个护美容','母婴用品','服饰鞋包','数码电器','住房物业','交通出行','通讯网络','文教娱乐','医疗健康','人情社交','金融保险','其他支出'];
+const CAT_ICONS = {'餐饮':'🍽️','生鲜食材':'🥬','零食饮料':'🧋','日用家居':'🧴','个护美容':'💄','母婴用品':'🍼','服饰鞋包':'👕','数码电器':'📱','住房物业':'🏠','交通出行':'🚌','通讯网络':'📶','文教娱乐':'📚','医疗健康':'💊','人情社交':'🎁','金融保险':'💳','其他支出':'📦'};
+const CAT_COLORS = {'餐饮':'#f59e0b','生鲜食材':'#84cc16','零食饮料':'#ec4899','日用家居':'#14b8a6','个护美容':'#f472b6','母婴用品':'#fb923c','服饰鞋包':'#8b5cf6','数码电器':'#6366f1','住房物业':'#6b7280','交通出行':'#3b82f6','通讯网络':'#06b6d4','文教娱乐':'#a855f7','医疗健康':'#ef4444','人情社交':'#e11d48','金融保险':'#0ea5e9','其他支出':'#78716c'};
 
 function getBudget(ym) { return data.budget && data.budget[ym] ? data.budget[ym] : null; }
 function setBudget(ym, amount) { if(!data.budget) data.budget = {}; data.budget[ym] = amount; saveData(); }
+
+// 旧分类→新分类映射
+const CAT_MIGRATION = {'交通':'交通出行','购物':'服饰鞋包','住房':'住房物业','娱乐':'文教娱乐','医疗':'医疗健康','教育':'文教娱乐','日用':'日用家居','母婴':'母婴用品','其他':'其他支出'};
+function migrateCategory(cat) { return CAT_MIGRATION[cat] || cat; }
 
 function updateFinCategories(){
   document.getElementById('finCategory').innerHTML = FINANCE_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
@@ -1416,6 +1420,7 @@ function deleteFinance(id){data.finances=data.finances.filter(f=>f.id!==id);save
 let finTrendTab = 'month';
 
 function isExpense(f) { return !f.type || f.type === '支出'; }
+function getCat(f) { return migrateCategory(f.category || '其他支出'); }
 
 function renderFinance() {
   const now=new Date();const ym=now.toISOString().slice(0,7);
@@ -1459,7 +1464,7 @@ function renderFinance() {
 
   // 饼图
   if(charts.finPie)charts.finPie.destroy();
-  const ec={};monthItems.filter(isExpense).forEach(f=>{ec[f.category]=(ec[f.category]||0)+f.amount;});
+  const ec={};monthItems.filter(isExpense).forEach(f=>{const c=getCat(f);ec[c]=(ec[c]||0)+f.amount;});
   const pl=Object.keys(ec);
   if(pl.length>0){charts.finPie=new Chart(document.getElementById('financePieChart'),{type:'doughnut',data:{labels:pl,datasets:[{data:Object.values(ec),backgroundColor:pl.map(c=>CAT_COLORS[c]||'#999')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}});}
 
@@ -1473,7 +1478,7 @@ function renderFinance() {
 function renderCategoryStats(monthItems, totalExpense) {
   const el = document.getElementById('finCategoryStats');
   const byCat = {};
-  monthItems.filter(isExpense).forEach(f => { byCat[f.category] = (byCat[f.category]||0) + f.amount; });
+  monthItems.filter(isExpense).forEach(f => { const c=getCat(f); byCat[c] = (byCat[c]||0) + f.amount; });
   const sorted = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
   if (sorted.length === 0) { el.innerHTML = '<div class="empty">本月暂无支出记录</div>'; return; }
   el.innerHTML = sorted.map(([cat, amt]) => {
@@ -1494,7 +1499,7 @@ function renderCategoryStats(monthItems, totalExpense) {
 // 分类明细弹窗
 function showCategoryDetail(cat) {
   const ym = new Date().toISOString().slice(0,7);
-  const items = data.finances.filter(f => f.date.startsWith(ym) && isExpense(f) && f.category === cat)
+  const items = data.finances.filter(f => f.date.startsWith(ym) && isExpense(f) && getCat(f) === cat)
     .sort((a,b) => b.date.localeCompare(a.date));
   const total = items.reduce((s,f) => s+f.amount, 0);
   const tbody = document.getElementById('aiResultTbody');
@@ -1514,31 +1519,95 @@ function showCategoryDetail(cat) {
   document.getElementById('aiResultModal').classList.add('show');
 }
 
-// 账目明细表格（带搜索）
+// 账目明细（按日期分组+折叠，带搜索）
 function renderFinanceTable() {
-  const tbody = document.querySelector('#financeTable tbody');
+  const container = document.getElementById('finTableContainer');
+  if (!container) return;
   const search = (document.getElementById('finSearchInput')?.value || '').trim().toLowerCase();
   let items = data.finances.slice().sort((a,b) => b.date.localeCompare(a.date));
+
   if (search) {
     items = items.filter(f => {
-      const text = [f.pname, f.brand, f.note, f.category, f.spec].join(' ').toLowerCase();
+      const text = [f.pname, f.brand, f.note, getCat(f), f.spec].join(' ').toLowerCase();
       return text.includes(search);
     });
   }
+
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">${search ? '没有找到匹配的记录' : '还没有账目记录'}</td></tr>`;
+    container.innerHTML = `<div class="empty">${search ? '没有找到匹配的记录' : '还没有账目记录'}</div>`;
     return;
   }
-  tbody.innerHTML = items.map(f => {
-    const itemStr = f.pname ? `${f.pname}${f.brand?' / '+f.brand:''}${f.spec?' '+f.spec:''}${f.qty?' '+f.qty:''}` : (f.note || '-');
-    const isInc = f.type === '收入';
-    const highlight = (text) => {
-      if (!search) return text;
-      const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
-      return text.replace(regex, '<mark style="background:#fef08a;padding:0 2px">$1</mark>');
-    };
-    return `<tr><td>${f.date}</td><td>${f.category}</td><td style="font-size:13px">${highlight(itemStr)}</td><td style="color:${isInc?'var(--green)':'var(--red)'};font-weight:600">${isInc?'+':'-'}¥${f.amount.toFixed(2)}</td><td>${f.photo?`<img class="thumb" src="${f.photo}" onclick="showImgModal('${f.photo}')">`:'-'}</td><td><button class="btn-danger" onclick="deleteFinance(${f.id})">删除</button></td></tr>`;
+
+  // 搜索时平铺展示
+  if (search) {
+    container.innerHTML = items.map(f => renderFinRow(f, search)).join('');
+    return;
+  }
+
+  // 按日期分组
+  const byDate = {};
+  items.forEach(f => { if (!byDate[f.date]) byDate[f.date] = []; byDate[f.date].push(f); });
+  const sortedDates = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
+
+  container.innerHTML = sortedDates.map((date, idx) => {
+    const dayItems = byDate[date];
+    const dayTotal = dayItems.reduce((s,f) => s + (isExpense(f) ? f.amount : -f.amount), 0);
+    const isLatest = idx === 0;
+    const dateObj = new Date(date);
+    const weekday = ['日','一','二','三','四','五','六'][dateObj.getDay()];
+    const isToday = date === todayStr();
+
+    return `<div class="fin-date-group" style="margin-bottom:8px">
+      <div class="fin-date-header" onclick="toggleFinDateGroup(this)" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-sm);cursor:pointer;user-select:none;transition:background .2s">
+        <span class="toggle-arrow" style="font-size:10px;color:var(--text-light);transition:transform .2s;${isLatest?'':'transform:rotate(-90deg)'}">${isLatest?'▼':'▶'}</span>
+        <span style="font-weight:700;font-size:14px">${date.slice(5)} <span style="color:var(--text-light);font-size:12px;font-weight:400">周${weekday}</span>${isToday?' <span class="tag tag-pink" style="font-size:10px">今天</span>':''}</span>
+        <span style="flex:1"></span>
+        <span style="font-size:12px;color:${dayTotal>=0?'var(--red)':'var(--green)'};font-weight:600">${dayTotal>=0?'-':'+'}¥${Math.abs(dayTotal).toFixed(2)}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${dayItems.length}笔</span>
+      </div>
+      <div class="fin-date-body" style="${isLatest?'':'display:none'}">
+        ${dayItems.map(f => renderFinRow(f)).join('')}
+      </div>
+    </div>`;
   }).join('');
+}
+
+function renderFinRow(f, search) {
+  const cat = getCat(f);
+  const icon = CAT_ICONS[cat] || '📦';
+  const color = CAT_COLORS[cat] || '#999';
+  const itemStr = f.pname ? `${f.pname}${f.brand?' / '+f.brand:''}${f.spec?' '+f.spec:''}${f.qty?' '+f.qty:''}` : (f.note || '-');
+  const isInc = f.type === '收入';
+  let displayStr = itemStr;
+  if (search) {
+    const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    displayStr = itemStr.replace(regex, '<mark style="background:#fef08a;padding:0 2px">$1</mark>');
+  }
+  return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--divider)">
+    <span style="width:28px;height:28px;border-radius:50%;background:${color}15;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${icon}</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:500">${displayStr}</div>
+      <div style="font-size:11px;color:var(--text-muted)">${cat}</div>
+    </div>
+    ${f.photo ? `<img class="thumb" src="${f.photo}" onclick="showImgModal('${f.photo}')" style="width:32px;height:32px;border-radius:6px;object-fit:cover">` : ''}
+    <span style="color:${isInc?'var(--green)':'var(--red)'};font-weight:700;font-size:14px;font-family:'Nunito',sans-serif;white-space:nowrap">${isInc?'+':'-'}¥${f.amount.toFixed(2)}</span>
+    <button class="btn-danger" onclick="deleteFinance(${f.id})" style="flex-shrink:0">删除</button>
+  </div>`;
+}
+
+function toggleFinDateGroup(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('.toggle-arrow');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    arrow.style.transform = 'rotate(0deg)';
+    arrow.textContent = '▼';
+  } else {
+    body.style.display = 'none';
+    arrow.style.transform = 'rotate(-90deg)';
+    arrow.textContent = '▶';
+  }
+}
 }
 
 // 趋势图（周/月/年）
@@ -1602,7 +1671,7 @@ function renderBrandTracker() {
   // 按 category 分组
   const byCat={};
   expenses.forEach(f=>{
-    const cat=f.category||'其他';
+    const cat=f.category||'其他支出';
     if(!byCat[cat])byCat[cat]=[];
     byCat[cat].push(f);
   });
@@ -1680,7 +1749,7 @@ function renderMonthlyReport(monthItems, lastMonthItems, expense, lastExpense, b
 
   // 按分类聚合
   const expByCat = {};
-  monthItems.filter(isExpense).forEach(f => { expByCat[f.category] = (expByCat[f.category]||0) + f.amount; });
+  monthItems.filter(isExpense).forEach(f => { const c=getCat(f); expByCat[c] = (expByCat[c]||0) + f.amount; });
 
   // Part 2: 必买物品（本月和上月都买过的）
   const thisPnames = new Set(monthItems.filter(isExpense).filter(f=>f.pname).map(f => f.pname));
