@@ -529,8 +529,9 @@ function getCalorieTarget() {
 }
 
 // ========== 图片处理 ==========
-function compressImage(file, callback, maxSize) {
-  maxSize = maxSize || 300;
+function compressImage(file, callback, maxSize, quality) {
+  maxSize = maxSize || 1000;
+  quality = quality === undefined ? 0.8 : quality;
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
@@ -541,7 +542,7 @@ function compressImage(file, callback, maxSize) {
       else { if (height > maxSize) { width = width * maxSize / height; height = maxSize; } }
       canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL('image/jpeg', 0.6));
+      callback(canvas.toDataURL('image/jpeg', quality));
     };
     img.src = e.target.result;
   };
@@ -580,7 +581,7 @@ function handleDietPhoto(event) {
     document.getElementById('dietPhotoClear').style.display = 'inline-block';
     document.getElementById('dietAIBtn').style.display = isAIConfigured() ? 'inline-block' : 'none';
     document.getElementById('dietAIResult').textContent = '';
-  });
+  }, 1000);
 }
 function clearDietPhoto() {
   dietPhotoData = null;
@@ -601,7 +602,7 @@ function handleFinPhoto(event) {
     document.getElementById('finPhotoClear').style.display = 'inline-block';
     document.getElementById('finAIBtn').style.display = isAIConfigured() ? 'inline-block' : 'none';
     document.getElementById('finAIResult').textContent = '';
-  });
+  }, 1400, 0.85);
 }
 
 // AI 识别食物
@@ -660,18 +661,55 @@ async function aiRecognizeFinance() {
     const result = await resp.json();
     if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
     if (result.items && result.items.length > 0) {
-      const item = result.items[0];
-      if (item.pname) document.getElementById('finPname').value = item.pname;
-      if (item.brand) document.getElementById('finBrand').value = item.brand;
-      if (item.spec) document.getElementById('finSpec').value = item.spec;
-      if (item.qty) document.getElementById('finQty').value = item.qty;
-      if (item.amount) document.getElementById('finAmount').value = item.amount;
-      if (item.category) {
-        const catSelect = document.getElementById('finCategory');
-        for (const opt of catSelect.options) { if (opt.value === item.category) { opt.selected = true; break; } }
+      const date = document.getElementById('finDate').value;
+      const type = document.getElementById('finType').value;
+      const note = document.getElementById('finNote').value.trim();
+
+      if (result.items.length === 1) {
+        // 只有一项时填充当前表单
+        const item = result.items[0];
+        if (item.pname) document.getElementById('finPname').value = item.pname;
+        if (item.brand) document.getElementById('finBrand').value = item.brand;
+        if (item.spec) document.getElementById('finSpec').value = item.spec;
+        if (item.qty) document.getElementById('finQty').value = item.qty;
+        if (item.amount) document.getElementById('finAmount').value = item.amount;
+        if (item.category) {
+          const catSelect = document.getElementById('finCategory');
+          for (const opt of catSelect.options) { if (opt.value === item.category) { opt.selected = true; break; } }
+        }
+        resultEl.innerHTML = `✅ 识别到 1 项，已填充${result.total_amount ? ' | 总额¥' + result.total_amount : ''}`;
+      } else {
+        // 识别到多项时，自动批量添加为多条账目
+        let added = 0;
+        const baseTs = Date.now();
+        result.items.forEach((item, idx) => {
+          const amount = parseFloat(item.amount);
+          if (isNaN(amount) || amount < 0) return;
+          const category = item.category && FINANCE_CATEGORIES['支出'].includes(item.category) ? item.category : '日用';
+          data.finances.push({
+            id: baseTs + idx,
+            date,
+            type,
+            category,
+            amount,
+            note,
+            photo: idx === 0 ? finPhotoData : null, // 只有第一条保留照片，避免重复占用空间
+            pname: (item.pname || '消费').toString().trim(),
+            brand: (item.brand || '').toString().trim(),
+            spec: (item.spec || '').toString().trim(),
+            qty: item.qty === undefined || item.qty === null ? '' : item.qty.toString()
+          });
+          added++;
+        });
+        saveData();
+        // 清空表单
+        document.getElementById('finAmount').value='';document.getElementById('finNote').value='';
+        document.getElementById('finPname').value='';document.getElementById('finBrand').value='';
+        document.getElementById('finSpec').value='';document.getElementById('finQty').value='';
+        clearFinPhoto();
+        renderFinance();
+        resultEl.innerHTML = `✅ 识别到 ${result.items.length} 项，已自动添加 ${added} 条账目${result.total_amount ? ' | 总额¥' + result.total_amount : ''}`;
       }
-      const count = result.items.length;
-      resultEl.innerHTML = `✅ 识别到 ${count} 项，已填充第1项${result.total_amount ? ' | 总额¥' + result.total_amount : ''}`;
       showToast('AI识别完成');
     } else if (result.raw) {
       resultEl.textContent = '⚠️ 识别结果: ' + result.raw.substring(0, 100);
