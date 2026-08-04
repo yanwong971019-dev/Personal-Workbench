@@ -403,13 +403,14 @@ tr:hover { background:var(--primary-bg); }
           <div class="form-group">
             <label>食物名称（输入可搜索食物库）</label>
             <div class="food-search-wrap">
-              <input type="text" id="dietFood" placeholder="如 米饭" oninput="searchFoodLib(this.value)" onfocus="searchFoodLib(this.value)" onblur="setTimeout(()=>{document.getElementById('foodDropdown').classList.remove('show')},200)">
+              <input type="text" id="dietFood" placeholder="如 米饭" oninput="onDietFoodInput(this.value)" onfocus="searchFoodLib(this.value)" onblur="setTimeout(()=>{document.getElementById('foodDropdown').classList.remove('show')},200)">
               <div class="food-dropdown" id="foodDropdown"></div>
             </div>
           </div>
           <div class="form-group"><label>热量 (kcal)</label><input type="number" id="dietCalories" placeholder="如 200"></div>
           <div class="form-group"><label>食物分类</label><select id="dietCategory"><option value="主食">主食</option><option value="蛋白质">蛋白质</option><option value="蔬菜">蔬菜</option><option value="水果">水果</option><option value="乳制品">乳制品</option><option value="零食">零食</option><option value="饮品">饮品</option><option value="其他">其他</option></select></div>
-          <div class="form-group"><label>份量/备注</label><input type="text" id="dietNote" placeholder="如 1小碗（填完自动估算热量）" onblur="estimateDietCalories()"></div>
+          <div class="form-group"><label>份量/备注</label><input type="text" id="dietNote" placeholder="如 300g（填完自动估算）" oninput="scheduleEstimateCalories()" onblur="scheduleEstimateCalories()"></div>
+          <div class="form-group" style="display:flex;align-items:flex-end"><button type="button" class="btn outline" style="width:100%" onclick="estimateDietCalories(true)">🤖 估算热量</button></div>
         </div>
         <!-- 营养提醒条 -->
         <div id="dietNutriAlert" style="margin-top:8px"></div>
@@ -1095,13 +1096,25 @@ function handleFinPhoto(event) {
 
 // AI 识别食物
 // AI 文本估算卡路里（填写食物名+份量后自动触发）
-// 改为只在份量框失焦时触发，确保食物和份量都填好了
 let estimateTimer = null;
-function estimateDietCalories() {
+function onDietFoodInput(value) {
+  searchFoodLib(value);
+  scheduleEstimateCalories();
+}
+function scheduleEstimateCalories() {
+  clearTimeout(estimateTimer);
+  estimateTimer = setTimeout(() => estimateDietCalories(), 1200);
+}
+function estimateDietCalories(force) {
   const food = document.getElementById('dietFood').value.trim();
   const amount = document.getElementById('dietNote').value.trim();
-  // 食物名和份量都填了才触发估算
-  if (!food || !amount || !isAIConfigured()) return;
+  if (!food) return;
+  // 食物名和份量都填了才自动触发估算；force=true 时强制触发
+  if (!amount && !force) return;
+  if (!isAIConfigured()) {
+    if (force) showToast('请先配置 AI 服务器');
+    return;
+  }
   // 如果食物库里能精确匹配，直接用食物库数据
   const libMatch = FOOD_LIB.find(f => f.name === food);
   if (libMatch) {
@@ -1137,7 +1150,7 @@ function estimateDietCalories() {
     } catch (err) {
       alertEl.innerHTML = '';
     }
-  }, 300);
+  }, force ? 100 : 300);
 }
 
 // 营养提醒（高热量/高糖→警告，低卡/高纤维/高蛋白→推荐）
