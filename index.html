@@ -897,15 +897,15 @@ function ensureTimestamps(dataObj) {
   if (!dataObj._updatedAt) dataObj._updatedAt = now; return dataObj;
 }
 
-function mergeData(localData, cloudData) {
+function mergeData(localData, cloudData, preferCloud) {
   if (!cloudData || typeof cloudData !== 'object') return localData;
   if (!localData || typeof localData !== 'object') return cloudData;
   const merged = JSON.parse(JSON.stringify(localData));
   MERGEABLE_ARRAYS.forEach(key => { const localArr = localData[key] || [], cloudArr = cloudData[key] || [], map = {}; localArr.forEach(item => { map[item._id || (key + '_' + item.id)] = item; }); cloudArr.forEach(item => { const id = item._id || (key + '_' + item.id); const ex = map[id]; if (!ex) map[id] = item; else { if ((item._updatedAt || 0) > (ex._updatedAt || 0)) map[id] = item; } }); merged[key] = Object.keys(map).map(k => map[k]); });
   const lt = localData._updatedAt || 0, ct = cloudData._updatedAt || 0;
   if (cloudData.budget) { if (!merged.budget) merged.budget = {}; Object.keys(cloudData.budget).forEach(bk => { const cb = cloudData.budget[bk], lb = merged.budget[bk]; if (!lb) merged.budget[bk] = cb; else { if ((cb._updatedAt || 0) > (lb._updatedAt || 0)) merged.budget[bk] = cb; } }); }
-  if (cloudData.height !== undefined && ct > lt) merged.height = cloudData.height;
-  if (cloudData.prePregWeight !== undefined && ct > lt) merged.prePregWeight = cloudData.prePregWeight;
+  if (cloudData.height !== undefined && (ct > lt || preferCloud)) merged.height = cloudData.height;
+  if (cloudData.prePregWeight !== undefined && (ct > lt || preferCloud)) merged.prePregWeight = cloudData.prePregWeight;
   if (!merged.budget) merged.budget = {}; if (!merged.checkups) merged.checkups = []; if (!merged.postpartums) merged.postpartums = []; if (merged.prePregWeight === undefined) merged.prePregWeight = null; if (!merged.weights) merged.weights = []; if (!merged.diets) merged.diets = []; if (!merged.finances) merged.finances = []; if (!merged.exercises) merged.exercises = [];
   merged._updatedAt = Math.max(lt, ct, Date.now()); return merged;
 }
@@ -934,7 +934,11 @@ async function fullSync() {
     const token = getSyncToken(), gistId = getGistId();
     const cloudData = await gistGet(token, gistId);
     if (cloudData === null) { syncState.isSyncing = false; setSyncStatus('error'); return; }
-    if (cloudData && Object.keys(cloudData).length > 0) { data = mergeData(data, cloudData); ensureTimestamps(data); __originalSaveData(); renderAll(); }
+    if (cloudData && Object.keys(cloudData).length > 0) {
+      const localEmpty = !data || (!data.weights?.length && !data.diets?.length && !data.finances?.length && !data.exercises?.length);
+      data = mergeData(data, cloudData, localEmpty);
+      ensureTimestamps(data); __originalSaveData(); renderAll();
+    }
     let { gistData, pendingImages } = serializeForGist(data);
     if (pendingImages.length > 0 && isImageRepoReady()) { const owner = getRepoOwner(), repo = getImageRepoName(), branch = getRepoBranch(); for (const img of pendingImages) await uploadImageToRepo(token, owner, repo, branch, img.path, img.base64); const rs = serializeForGist(data); gistData = rs.gistData; }
     await gistUpdate(token, gistId, JSON.stringify(gistData, null, 2));
@@ -1042,6 +1046,8 @@ function showImgModalById(imgId) { const el = document.getElementById(imgId); if
 
 window.addEventListener('online', () => { if (isGistReady()) { setSyncStatus('idle'); updateSyncBar(); if (syncState.pendingPush || syncState.lastError) { syncState.pendingPush = false; fullSync(); } } });
 window.addEventListener('offline', () => { if (isGistReady()) { setSyncStatus('offline'); updateSyncBar(); } });
+window.addEventListener('pageshow', () => { if (isGistReady() && navigator.onLine) setTimeout(() => { if (!syncState.isSyncing) fullSync(); }, 800); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && isGistReady() && navigator.onLine && !syncState.isSyncing) setTimeout(() => fullSync(), 500); });
 
 const __originalSaveData = saveData;
 saveData = function() { ensureTimestamps(data); __originalSaveData(); debouncedPush(); };
