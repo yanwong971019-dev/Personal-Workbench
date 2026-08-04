@@ -545,10 +545,20 @@ tr:hover { background:var(--primary-bg); }
       <div class="card"><div class="card-title">📋 <span id="finReportTitle">本月</span>消费报告</div><div id="finMonthlyReport"></div></div>
 
       <!-- 品牌追踪 -->
-      <div class="card"><div class="card-title">🏷️ 物品品牌追踪</div><div id="finBrandTracker"></div></div>
+      <div class="card"><div class="card-title">🏷️ 物品品牌追踪 <button class="btn-sm" onclick="fixCategory()" style="margin-left:auto">🔧 修复分类</button></div><div id="finBrandTracker"></div></div>
 
-      <!-- 账目明细（带搜索+分组折叠） -->
-      <div class="card"><div class="card-title">账目明细 <input type="text" id="finSearchInput" placeholder="🔍 搜索产品名/品牌..." oninput="renderFinanceTable()" style="font-size:13px;padding:6px 12px;width:200px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-left:auto;background:#fafafa"></div>
+      <!-- 账目明细（带搜索+分组折叠+日/周/月/年切换） -->
+      <div class="card"><div class="card-title" style="flex-wrap:wrap;gap:8px">账目明细
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <div class="tab-group" style="margin:0">
+            <button class="tab active" onclick="switchFinanceTableTab('day',this)">日</button>
+            <button class="tab" onclick="switchFinanceTableTab('week',this)">周</button>
+            <button class="tab" onclick="switchFinanceTableTab('month',this)">月</button>
+            <button class="tab" onclick="switchFinanceTableTab('year',this)">年</button>
+          </div>
+          <input type="text" id="finSearchInput" placeholder="🔍 搜索..." oninput="renderFinanceTable()" style="font-size:13px;padding:6px 12px;width:140px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fafafa">
+        </div>
+      </div>
         <div id="finTableContainer"></div>
       </div>
     </div>
@@ -1766,6 +1776,37 @@ const FINANCE_CATEGORIES = ['餐饮','生鲜食材','零食饮料','日用家居
 const CAT_ICONS = {'餐饮':'🍽️','生鲜食材':'🥬','零食饮料':'🧋','日用家居':'🧴','个护美容':'💄','母婴用品':'🍼','服饰鞋包':'👕','数码电器':'📱','AI软件':'🤖','住房物业':'🏠','交通出行':'🚌','通讯网络':'📶','文教娱乐':'📚','医疗健康':'💊','人情社交':'🎁','金融保险':'💳','其他支出':'📦'};
 const CAT_COLORS = {'餐饮':'#f59e0b','生鲜食材':'#84cc16','零食饮料':'#ec4899','日用家居':'#14b8a6','个护美容':'#f472b6','母婴用品':'#fb923c','服饰鞋包':'#8b5cf6','数码电器':'#6366f1','AI软件':'#0ea5e9','住房物业':'#6b7280','交通出行':'#3b82f6','通讯网络':'#06b6d4','文教娱乐':'#a855f7','医疗健康':'#ef4444','人情社交':'#e11d48','金融保险':'#0284c7','其他支出':'#78716c'};
 
+// 智能分类：根据产品名称关键词自动匹配分类
+const AUTO_CAT_RULES = [
+  { kw: ['外卖','餐厅','饭店','饭店','食堂','快餐','肯德基','麦当劳','汉堡','披萨','烧烤','火锅','麻辣烫','麻辣拌','拉面','面馆','米饭','套餐','午饭','晚饭','早餐','午餐','晚餐'], cat: '餐饮' },
+  { kw: ['葱','姜','蒜','辣椒','土豆','萝卜','青菜','菠菜','西兰花','油菜','番茄','西红柿','黄瓜','南瓜','冬瓜','苦瓜','丝瓜','茄子','白菜','生菜','韭菜','芹菜','香菜','豆角','毛豆','毛桃','桃','苹果','香蕉','橙子','西瓜','葡萄','荔枝','芒果','草莓','蓝莓','樱桃','梨','猪肉','牛肉','鸡肉','鸭肉','鱼肉','虾','蟹','鸡蛋','豆腐','大米','面粉','食用油','酱油','醋','盐','糖','料酒','蚝油','味精','鸡精','胡椒','花椒','八角','桂皮','生鲜','蔬菜','水果','肉类','海鲜','水产','调味','食材','菜','肉','鱼','蛋','米','面','油'], cat: '生鲜食材' },
+  { kw: ['奶茶','咖啡','可乐','雪碧','饮料','零食','薯片','饼干','蛋糕','面包','巧克力','冰淇淋','糖','瓜子','坚果','酸奶','牛奶','果汁','矿泉水','纯净水','酒','啤酒','红酒','白酒'], cat: '零食饮料' },
+  { kw: ['洗衣','洗洁精','垃圾袋','纸巾','拖把','扫帚','抹布','清洁','收纳','衣架','保鲜袋','保鲜膜','碗','筷子','勺子','锅','刀具','砧板','电饭煲','热水壶','净水器','过滤','牙膏','牙刷','毛巾','浴巾','洗发','沐浴','香皂','洗手液','消毒','口罩','日用','家居','家居用品','蚊香','驱蚊','电池','灯泡','蜡烛','打火机','伞','拖鞋','手套','围裙'], cat: '日用家居' },
+  { kw: ['面霜','乳液','精华','防晒','粉底','口红','眼影','眉笔','化妆','卸妆','面膜','洗面奶','护手霜','香水','美容','护肤','彩妆','唇膏','BB霜','CC霜','隔离','腮红','散粉','高光','修容','遮瑕','眼线','睫毛','指甲油'], cat: '个护美容' },
+  { kw: ['尿不湿','奶粉','奶瓶','纸尿裤','婴儿','宝宝','童装','玩具','辅食','磨牙棒','奶嘴','吸奶器','推车','安全座椅','湿巾','母婴','月子','待产','产妇','防溢乳垫','哺乳','孕',], cat: '母婴用品' },
+  { kw: ['衣服','裤子','裙子','鞋','帽子','围巾','包','袜子','内衣','T恤','衬衫','外套','羽绒服','运动鞋','凉鞋','拖鞋','皮带','眼镜','手表','首饰','项链','耳环','戒指','服饰','鞋包','箱包','背包','双肩包'], cat: '服饰鞋包' },
+  { kw: ['手机','电脑','平板','耳机','充电器','数据线','充电宝','U盘','硬盘','内存','键盘','鼠标','显示器','打印机','路由器','音响','相机','手机壳','贴膜','支架','数码','电器','电子','线缆','转接头','SD卡','TF卡'], cat: '数码电器' },
+  { kw: ['ChatGPT','AI','GPT','Claude','Midjourney','软件','订阅','会员','云服务','域名','服务器','API','token','VPN','工具','App','应用','插件'], cat: 'AI软件' },
+  { kw: ['房租','物业','水费','电费','燃气','暖气','维修','装修','房租','房产','中介','搬家','清洁','家政','绿化','停车','车库'], cat: '住房物业' },
+  { kw: ['公交','地铁','打车','出租车','网约车','滴滴','加油','汽油','柴油','停车费','过路费','ETC','高铁','火车票','机票','船票','单车','共享','骑行','电动车','充电桩','交通','出行','车票','通行'], cat: '交通出行' },
+  { kw: ['话费','流量','宽带','网费','电话费','充值','通讯','网络','WIFI'], cat: '通讯网络' },
+  { kw: ['书','电影','演出','门票','展览','博物馆','游戏','音乐','学习','课程','培训','教育','文具','笔','本子','打印','印刷','文教','娱乐','KTV','健身卡','游泳','旅游','酒店','景点'], cat: '文教娱乐' },
+  { kw: ['药','挂号','检查','体检','医院','诊所','牙科','眼镜','隐形眼镜','护理液','创可贴','维生素','保健品','钙片','叶酸','DHA','鱼油','血压计','血糖仪','体温计','保险套','验孕','医疗','健康','看病','门诊','手术'], cat: '医疗健康' },
+  { kw: ['红包','礼物','送礼','请客','随礼','份子','捐赠','慈善','人情','社交','聚会','聚餐','请吃饭'], cat: '人情社交' },
+  { kw: ['保险','理财','基金','股票','贷款','信用卡','还款','利息','银行','手续费','金融','投资','证券'], cat: '金融保险' },
+];
+
+function autoClassify(pname) {
+  if (!pname) return null;
+  const name = pname.toLowerCase();
+  for (const rule of AUTO_CAT_RULES) {
+    for (const kw of rule.kw) {
+      if (name.includes(kw.toLowerCase())) return rule.cat;
+    }
+  }
+  return null;
+}
+
 function getBudget(ym) { return data.budget && data.budget[ym] ? data.budget[ym] : null; }
 function setBudget(ym, amount) { if(!data.budget) data.budget = {}; data.budget[ym] = amount; saveData(); }
 
@@ -1793,7 +1834,7 @@ function showBudgetSetter() {
 
 function addFinance() {
   const date=document.getElementById('finDate').value;
-  const category=document.getElementById('finCategory').value;
+  let category=document.getElementById('finCategory').value;
   const amount=parseFloat(document.getElementById('finAmount').value);
   const note=document.getElementById('finNote').value.trim();
   if(!date||!amount){showToast('请填写日期和金额');return;}
@@ -1802,6 +1843,13 @@ function addFinance() {
   record.brand=document.getElementById('finBrand').value.trim();
   record.spec=document.getElementById('finSpec').value.trim();
   record.qty=document.getElementById('finQty').value.trim();
+  // 智能分类：根据产品名自动匹配
+  if (record.pname) {
+    const autoCat = autoClassify(record.pname);
+    if (autoCat && category === '日用家居') {
+      record.category = autoCat;
+    }
+  }
   data.finances.push(record);
   saveData();
   document.getElementById('finAmount').value='';document.getElementById('finNote').value='';
@@ -1811,6 +1859,22 @@ function addFinance() {
   showToast('支出已添加'); renderFinance();
 }
 function deleteFinance(id){data.finances=data.finances.filter(f=>f.id!==id);saveData();renderFinance();}
+
+// 一键修复分类：根据产品名自动重新归类
+function fixCategory() {
+  let changed = 0;
+  data.finances.forEach(f => {
+    if (!isExpense(f) || !f.pname) return;
+    const autoCat = autoClassify(f.pname);
+    if (autoCat && f.category !== autoCat) {
+      f.category = autoCat;
+      changed++;
+    }
+  });
+  saveData();
+  showToast(`已修复 ${changed} 条记录的分类`);
+  renderFinance();
+}
 
 // 当前 tab 状态
 let finTrendTab = 'month';
@@ -1915,6 +1979,17 @@ function showCategoryDetail(cat) {
   document.getElementById('aiResultModal').classList.add('show');
 }
 
+// 账目明细：日/周/月/年切换
+let finTableTab = 'day';
+function switchFinanceTableTab(tab, el) {
+  finTableTab = tab;
+  document.querySelectorAll('#finTableContainer').forEach(() => {});
+  const tabs = document.querySelectorAll('#page-finance .tab-group .tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderFinanceTable();
+}
+
 function renderFinanceTable() {
   const search = document.getElementById('finSearchInput').value.trim().toLowerCase();
   let items = data.finances.filter(isExpense).slice().sort((a,b) => b.date.localeCompare(a.date));
@@ -1930,25 +2005,44 @@ function renderFinanceTable() {
     container.innerHTML = '<div class="empty">暂无记录</div>';
     return;
   }
-  // 按日期分组
+  // 按维度分组
+  const now = new Date();
   const grouped = {};
   items.forEach(f => {
-    if (!grouped[f.date]) grouped[f.date] = [];
-    grouped[f.date].push(f);
+    let key;
+    if (finTableTab === 'day') key = f.date;
+    else if (finTableTab === 'week') {
+      const d = new Date(f.date + 'T00:00:00');
+      const dayOfWeek = d.getDay();
+      const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(d.getFullYear(), d.getMonth(), diff);
+      key = monday.toISOString().slice(0, 10);
+    } else if (finTableTab === 'month') key = f.date.slice(0, 7);
+    else if (finTableTab === 'year') key = f.date.slice(0, 4);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(f);
   });
-  const dates = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
+  const keys = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
   let html = '';
   let grandTotal = 0;
-  dates.forEach(date => {
-    const dayItems = grouped[date];
-    const dayTotal = dayItems.reduce((s,f) => s+f.amount, 0);
-    grandTotal += dayTotal;
+  keys.forEach(key => {
+    const groupItems = grouped[key];
+    const groupTotal = groupItems.reduce((s,f) => s+f.amount, 0);
+    grandTotal += groupTotal;
+    let label = key;
+    if (finTableTab === 'week') {
+      const end = new Date(key + 'T00:00:00');
+      end.setDate(end.getDate() + 6);
+      label = key + ' ~ ' + end.toISOString().slice(0, 10);
+    } else if (finTableTab === 'month') label = key;
+    else if (finTableTab === 'year') label = key + '年';
     html += `<div style="margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text-light);font-weight:600;padding:4px 8px;background:var(--bg-secondary);border-radius:6px;margin-bottom:4px;display:flex;justify-content:space-between">
-        <span>📅 ${date}</span><span>¥${dayTotal.toFixed(2)}</span>
+      <div style="font-size:12px;color:var(--text-light);font-weight:600;padding:4px 8px;background:var(--bg-secondary);border-radius:6px;margin-bottom:4px;display:flex;justify-content:space-between;cursor:pointer" onclick="toggleFinGroup(this)">
+        <span>📅 ${label} · ${groupItems.length}笔</span><span>¥${groupTotal.toFixed(2)}</span>
       </div>
+      <div class="fin-group-body" style="display:block">
       <table style="font-size:13px"><tbody>`;
-    dayItems.forEach(f => {
+    groupItems.forEach(f => {
       const cat = getCat(f);
       const icon = CAT_ICONS[cat] || '📦';
       const color = CAT_COLORS[cat] || '#999';
@@ -1969,10 +2063,15 @@ function renderFinanceTable() {
         </td>
       </tr>`;
     });
-    html += `</tbody></table></div>`;
+    html += `</tbody></table></div></div>`;
   });
   html += `<div style="text-align:right;font-size:14px;font-weight:700;padding:8px;border-top:2px solid var(--border);margin-top:8px">总计：¥${grandTotal.toFixed(2)}</div>`;
   container.innerHTML = html;
+}
+
+function toggleFinGroup(el) {
+  const body = el.nextElementSibling;
+  body.style.display = body.style.display === 'none' ? 'block' : 'none';
 }
 
 function renderFinanceTrendChart() {
@@ -2023,8 +2122,9 @@ function switchFinanceTab(tab) {
 
 function renderBrandTracker() {
   const el = document.getElementById('finBrandTracker');
-  const expenses = data.finances.filter(f => isExpense(f) && f.pname);
-  if (expenses.length === 0) { el.innerHTML = '<div class="empty">暂无品牌追踪记录</div>'; return; }
+  // 只追踪有品牌的物品
+  const expenses = data.finances.filter(f => isExpense(f) && f.pname && f.brand);
+  if (expenses.length === 0) { el.innerHTML = '<div class="empty">暂无品牌追踪记录（需要填写品牌）</div>'; return; }
   // 按产品名分组
   const brandMap = {};
   expenses.forEach(f => {
