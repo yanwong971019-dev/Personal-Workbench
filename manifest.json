@@ -1,0 +1,22 @@
+{
+  "name": "个人生活工作台",
+  "short_name": "工作台",
+  "description": "孕期生活、饮食、记账、运动综合管理",
+  "start_url": "/Personal-Workbench/",
+  "display": "standalone",
+  "background_color": "#FAF7F5",
+  "theme_color": "#E8806B",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon-512-bg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
