@@ -3,7 +3,7 @@
   "short_name": "工作台",
   "description": "孕期生活、饮食、记账、运动综合管理",
   "start_url": "/Personal-Workbench/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#FAF7F5",
   "theme_color": "#E8806B",
   "orientation": "portrait-primary",
