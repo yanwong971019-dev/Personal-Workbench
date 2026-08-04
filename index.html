@@ -793,13 +793,15 @@ let pushDebounceTimer = null;
 
 function getSyncConfig() { try { return JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY)) || {}; } catch (e) { return {}; } }
 function setSyncConfig(cfg) { localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg)); }
+// 硬编码默认 Gist ID，确保新设备无需配置就能连接同一个 Gist
+const DEFAULT_GIST_ID = 'ee98bf8035f733dcfe2c31537e070a38';
 function getSyncToken() { return (getSyncConfig().token || '').trim(); }
-function getGistId() { return (getSyncConfig().gistId || '').trim(); }
+function getGistId() { return (getSyncConfig().gistId || DEFAULT_GIST_ID).trim(); }
 function getRepoOwner() { return (getSyncConfig().repoOwner || '').trim(); }
 function getImageRepoName() { return (getSyncConfig().imageRepoName || '').trim(); }
 function getRepoBranch() { return (getSyncConfig().repoBranch || 'main').trim(); }
 function isSyncConfigured() { return !!(getSyncToken() && getGistId()); }
-function isGistReady() { const cfg = getSyncConfig(); return !!(cfg.token && cfg.gistId); }
+function isGistReady() { return !!getSyncToken(); }
 function isImageRepoReady() { const cfg = getSyncConfig(); return !!(cfg.token && cfg.repoOwner && cfg.imageRepoName); }
 
 function githubHeaders(token) {
@@ -982,7 +984,7 @@ function openSyncSettings() {
   const modal = document.getElementById('syncSettingsModal'); if (!modal) return;
   const cfg = getSyncConfig();
   document.getElementById('syncToken').value = cfg.token || '';
-  document.getElementById('syncGistId').value = cfg.gistId || '';
+  document.getElementById('syncGistId').value = cfg.gistId || DEFAULT_GIST_ID;
   document.getElementById('syncRepoOwner').value = cfg.repoOwner || '';
   document.getElementById('syncImageRepoName').value = cfg.imageRepoName || '';
   document.getElementById('syncRepoBranch').value = cfg.repoBranch || 'main';
