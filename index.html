@@ -2012,10 +2012,12 @@ function renderFinanceTable() {
     let key;
     if (finTableTab === 'day') key = f.date;
     else if (finTableTab === 'week') {
-      const d = new Date(f.date + 'T00:00:00');
-      const dayOfWeek = d.getDay();
-      const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-      const monday = new Date(d.getFullYear(), d.getMonth(), diff);
+      // 使用 UTC 解析避免时区偏差
+      const parts = f.date.split('-').map(Number);
+      const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      const dayOfWeek = d.getUTCDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + diff));
       key = monday.toISOString().slice(0, 10);
     } else if (finTableTab === 'month') key = f.date.slice(0, 7);
     else if (finTableTab === 'year') key = f.date.slice(0, 4);
