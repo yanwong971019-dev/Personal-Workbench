@@ -1207,18 +1207,17 @@ function showNutriAlert(tags, category, food, advice) {
 
   let html = '';
   if (warnTags.length > 0) {
+    // 有警告标签时，只显示警告，不显示"推荐多吃"，避免矛盾提示
     html += `<div class="alert-bar danger" style="margin-bottom:6px">
       <span class="alert-icon">⚠️</span>
       <div><strong>${food}</strong> 含 ${warnTags.join('、')} 成分，孕晚期应少吃，避免体重增长过快和血糖波动${advice ? '<br>💬 ' + advice : ''}</div>
     </div>`;
-  }
-  if (goodTags.length > 0) {
+  } else if (goodTags.length > 0) {
     html += `<div class="alert-bar ok" style="margin-bottom:6px">
       <span class="alert-icon">✅</span>
       <div><strong>${food}</strong> ${goodTags.join('、')}，适合孕期多吃，有助于控重和营养均衡${advice ? '<br>💬 ' + advice : ''}</div>
     </div>`;
-  }
-  if (warnTags.length === 0 && goodTags.length === 0) {
+  } else {
     html = `<div class="alert-bar" style="background:#f3f4f6;margin-bottom:6px">
       <span class="alert-icon">📊</span><div><strong>${food}</strong> 营养适中，注意控制份量即可</div>
     </div>`;
