@@ -470,9 +470,19 @@ tr:hover { background:var(--primary-bg); }
         </div>
       </div>
 
-      <!-- 今日明细 -->
-      <div class="card"><div class="card-title">今日饮食明细</div>
-        <div class="table-wrap"><table id="dietTable"><thead><tr><th>餐别</th><th>食物</th><th>分类</th><th>热量</th><th>标签</th><th>图</th><th></th></tr></thead><tbody></tbody></table></div>
+      <!-- 饮食明细（日/周/月/年切换+搜索+折叠） -->
+      <div class="card"><div class="card-title" style="flex-wrap:wrap;gap:8px">饮食明细
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap">
+          <div class="tab-group" style="margin:0">
+            <button class="tab active" onclick="switchDietTableTab('day',this)">日</button>
+            <button class="tab" onclick="switchDietTableTab('week',this)">周</button>
+            <button class="tab" onclick="switchDietTableTab('month',this)">月</button>
+            <button class="tab" onclick="switchDietTableTab('year',this)">年</button>
+          </div>
+          <input type="text" id="dietSearchInput" placeholder="🔍 搜索食物..." oninput="renderDietTable()" style="font-size:13px;padding:6px 12px;width:140px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fafafa">
+        </div>
+      </div>
+        <div id="dietTableContainer"></div>
       </div>
 
       <!-- 周报 -->
@@ -1718,16 +1728,8 @@ function renderDiet() {
     <div class="stat-card"><div class="stat-label">本周热量</div><div class="stat-value primary">${weekCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">日均 ${Math.round(weekCal/7)} kcal</div></div>
     <div class="stat-card"><div class="stat-label">总记录</div><div class="stat-value primary">${data.diets.length}</div></div>`;
 
-  // 明细表格
-  const tbody=document.querySelector('#dietTable tbody');
-  if(todayItems.length===0){tbody.innerHTML='<tr><td colspan="7" class="empty">今日还没有饮食记录</td></tr>';}
-  else{
-    const mc={'早餐':'tag-breakfast','午餐':'tag-lunch','晚餐':'tag-dinner','加餐':'tag-snack'};
-    tbody.innerHTML=todayItems.map(d=>{
-      const tagHtml=(d.tags||[]).map(t=>`<span class="tag ${t==='高糖'||t==='高脂'?'tag-red':t==='低卡'||t==='控糖友好'?'tag-green':'tag-orange'}">${t}</span>`).join(' ');
-      return `<tr><td><span class="tag ${mc[d.meal]||''}">${d.meal}</span></td><td>${d.food}</td><td>${d.category||'-'}</td><td>${d.calories}</td><td>${tagHtml||'-'}</td><td>${d.photo?`<img class="thumb" id="diet-img-${d.id}" data-photo-path="${(d.photo||'').replace(/"/g,'&quot;')}" src="${d.photo.startsWith('data:')?d.photo:''}" onclick="showImgModalById('diet-img-${d.id}')">`:'-'}</td><td><button class="btn-danger" onclick="deleteDiet(${d.id})">删除</button></td></tr>`;
-    }).join('')+`<tr style="font-weight:600;background:#f9fafb"><td>合计</td><td></td><td></td><td>${todayCalories} kcal</td><td colspan="3"></td></tr>`;
-  }
+  // 明细表格（改为调用新的 renderDietTable）
+  renderDietTable();
 
   // 营养占比饼图
   if(charts.dietNutri)charts.dietNutri.destroy();
@@ -1750,6 +1752,99 @@ function renderDiet() {
 
   // 周报
   renderDietWeeklyReport(weekItems, target);
+}
+
+// 饮食明细：日/周/月/年切换 + 搜索 + 折叠
+let dietTableTab = 'day';
+function switchDietTableTab(tab, el) {
+  dietTableTab = tab;
+  const tabs = document.querySelectorAll('#page-diet .tab-group .tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderDietTable();
+}
+
+function renderDietTable() {
+  const search = (document.getElementById('dietSearchInput')?.value || '').trim().toLowerCase();
+  let items = data.diets.slice().sort((a,b) => b.date.localeCompare(a.date));
+  if (search) {
+    items = items.filter(d =>
+      (d.food||'').toLowerCase().includes(search) ||
+      (d.meal||'').toLowerCase().includes(search) ||
+      (d.category||'').toLowerCase().includes(search) ||
+      (d.note||'').toLowerCase().includes(search)
+    );
+  }
+  const container = document.getElementById('dietTableContainer');
+  if (!container) return;
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty">暂无记录</div>';
+    return;
+  }
+  // 按维度分组
+  const grouped = {};
+  items.forEach(d => {
+    let key;
+    if (dietTableTab === 'day') key = d.date;
+    else if (dietTableTab === 'week') {
+      const parts = d.date.split('-').map(Number);
+      const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      const dow = dt.getUTCDay();
+      const diff = dow === 0 ? -6 : 1 - dow;
+      const monday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + diff));
+      key = monday.toISOString().slice(0, 10);
+    } else if (dietTableTab === 'month') key = d.date.slice(0, 7);
+    else if (dietTableTab === 'year') key = d.date.slice(0, 4);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(d);
+  });
+  const keys = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
+  const mc = {'早餐':'tag-breakfast','午餐':'tag-lunch','晚餐':'tag-dinner','加餐':'tag-snack'};
+  let html = '';
+  let grandTotal = 0;
+  keys.forEach(key => {
+    const groupItems = grouped[key];
+    const groupCal = groupItems.reduce((s,d) => s+d.calories, 0);
+    grandTotal += groupCal;
+    let label = key;
+    if (dietTableTab === 'week') {
+      const end = new Date(key + 'T00:00:00');
+      end.setDate(end.getDate() + 6);
+      label = key + ' ~ ' + end.toISOString().slice(0, 10);
+    } else if (dietTableTab === 'month') label = key;
+    else if (dietTableTab === 'year') label = key + '年';
+    html += `<div style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text-light);font-weight:600;padding:6px 10px;background:var(--bg-secondary);border-radius:6px;margin-bottom:4px;display:flex;justify-content:space-between;cursor:pointer" onclick="toggleDietGroup(this)">
+        <span>▶ ${label} · ${groupItems.length}条 · ${groupCal} kcal</span>
+        <span>${groupCal} kcal</span>
+      </div>
+      <div class="diet-group-body" style="display:none">
+      <div class="table-wrap"><table style="font-size:13px"><thead><tr><th>餐别</th><th>食物</th><th>分类</th><th>热量</th><th>标签</th><th>图</th><th></th></tr></thead><tbody>`;
+    groupItems.forEach(d => {
+      const tagHtml = (d.tags||[]).map(t => `<span class="tag ${t==='高糖'||t==='高脂'?'tag-red':t==='低卡'||t==='控糖友好'?'tag-green':'tag-orange'}">${t}</span>`).join(' ');
+      html += `<tr>
+        <td><span class="tag ${mc[d.meal]||''}">${d.meal}</span></td>
+        <td>${d.food}</td>
+        <td>${d.category||'-'}</td>
+        <td>${d.calories}</td>
+        <td>${tagHtml||'-'}</td>
+        <td>${d.photo ? `<img class="thumb" id="diet-img-${d.id}" data-photo-path="${(d.photo||'').replace(/"/g,'&quot;')}" src="${d.photo.startsWith('data:')?d.photo:''}" onclick="showImgModalById('diet-img-${d.id}')">` : '-'}</td>
+        <td><button class="btn-danger" onclick="deleteDiet(${d.id})">删除</button></td>
+      </tr>`;
+    });
+    html += `<tr style="font-weight:600;background:#f9fafb"><td>合计</td><td colspan="2"></td><td>${groupCal} kcal</td><td colspan="3"></td></tr>`;
+    html += `</tbody></table></div></div></div>`;
+  });
+  html += `<div style="text-align:right;font-size:14px;font-weight:700;padding:8px;border-top:2px solid var(--border);margin-top:8px">总计：${grandTotal} kcal</div>`;
+  container.innerHTML = html;
+}
+
+function toggleDietGroup(el) {
+  const body = el.nextElementSibling;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  const arrow = el.querySelector('span');
+  if (arrow) arrow.textContent = (isHidden ? '▼' : '▶') + arrow.textContent.slice(1);
 }
 
 function renderDietWeeklyReport(weekItems, target) {
