@@ -732,14 +732,14 @@ function loadData() {
       const d = JSON.parse(raw);
       if (!d.checkups) d.checkups = [];
       if (!d.postpartums) d.postpartums = [];
-      if (d.prePregWeight === undefined) d.prePregWeight = null;
+      if (d.prePregWeight === undefined || d.prePregWeight === null) d.prePregWeight = 50; // 孕前体重 50kg
       if (!d.diets) d.diets = [];
       if (!d.finances) d.finances = [];
       if (!d.budget) d.budget = {};
       return d;
     }
   } catch(e) {}
-  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: null, checkups: [], postpartums: [], budget: {} };
+  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: 50, checkups: [], postpartums: [], budget: {} };
 }
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function todayStr() { const d=new Date(); const tz=d.getTimezoneOffset()*60000; return new Date(d-tz).toISOString().slice(0,10); }
