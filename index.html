@@ -377,6 +377,7 @@ tr:hover { background:var(--primary-bg); }
           <div class="form-group"><label>日期</label><input type="date" id="weightDate"></div>
           <div class="form-group"><label>体重 (kg)</label><input type="number" id="weightValue" step="0.1" placeholder="如 65.5"></div>
           <div class="form-group"><label>身高 (cm)</label><input type="number" id="heightValue" step="0.1" value="160"></div>
+          <div class="form-group"><label>孕前体重 (kg)</label><input type="number" id="prePregWeightValue" step="0.1" value="50" onchange="updatePrePregWeight()"></div>
           <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addWeight()">添加</button></div>
         </div>
       </div>
@@ -1649,7 +1650,6 @@ function addWeight() {
   const height=parseFloat(document.getElementById('heightValue').value);
   if(!date||!value){showToast('请填写日期和体重');return;}
   if(height)data.height=height;
-  if(data.prePregWeight===null&&data.weights.length===0){const info=getPregnancyInfo();if(info.phase==='pregnancy')data.prePregWeight=value;}
   data.weights=data.weights.filter(w=>w.date!==date);
   data.weights.push({date,value,height:data.height});
   data.weights.sort((a,b)=>a.date.localeCompare(b.date));
@@ -1657,10 +1657,17 @@ function addWeight() {
   showToast('体重记录已添加');renderWeight();
 }
 function deleteWeight(date){data.weights=data.weights.filter(w=>w.date!==date);saveData();renderWeight();}
+function updatePrePregWeight(){
+  const val=parseFloat(document.getElementById('prePregWeightValue').value);
+  if(!isNaN(val)&&val>0){data.prePregWeight=val;saveData();renderWeight();showToast('孕前体重已更新');}
+}
 function renderWeight() {
   const info=getPregnancyInfo();
   const hint=document.getElementById('weightPregHint');
   hint.innerHTML=info.phase==='pregnancy'?`· <span style="color:var(--primary)">孕期：${pregWeekStr(info)}</span>`:`· <span style="color:var(--green)">产后：${pregWeekStr(info)}</span>`;
+  // 同步孕前体重输入框
+  const preEl=document.getElementById('prePregWeightValue');
+  if(preEl&&data.prePregWeight!==undefined&&data.prePregWeight!==null)preEl.value=data.prePregWeight;
   const weights=data.weights;const statsEl=document.getElementById('weightStats');
   if(weights.length===0){statsEl.innerHTML='<div class="stat-card"><div class="stat-label">暂无记录</div></div>';}
   else{
