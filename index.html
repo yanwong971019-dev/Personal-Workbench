@@ -1318,7 +1318,7 @@ async function aiRecognizeFinance() {
         // 多项时弹出确认弹窗
         aiResultContext = {
           date: document.getElementById('finDate').value,
-          type: document.getElementById('finType').value,
+          type: '支出',
           note: document.getElementById('finNote').value.trim(),
           photo: finPhotoData,
           items: result.items.map(item => ({
