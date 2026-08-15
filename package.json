@@ -1,0 +1,10 @@
+{
+  "name": "personal-workbench",
+  "version": "2026.8.15",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check api/_shared.js && node --check api/recognize.js && node --check api/estimate.js",
+    "test": "node --test tests/*.test.js"
+  }
+}

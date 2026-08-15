@@ -791,8 +791,10 @@ function compressImage(file, callback, maxSize, quality) {
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
       callback(canvas.toDataURL('image/jpeg', quality));
     };
+    img.onerror = () => showToast('图片读取失败，请改用 JPEG、PNG 或重新拍照');
     img.src = e.target.result;
   };
+  reader.onerror = () => showToast('图片读取失败，请重新选择');
   reader.readAsDataURL(file);
 }
 function showImgModal(src) { document.getElementById('imgModalImg').src = src; document.getElementById('imgModal').classList.add('show'); }
@@ -1146,7 +1148,7 @@ function handleFinPhoto(event) {
     document.getElementById('finPhotoClear').style.display = 'inline-block';
     document.getElementById('finAIBtn').style.display = isAIConfigured() ? 'inline-block' : 'none';
     document.getElementById('finAIResult').textContent = '';
-  }, 1200, 0.8); // 记账图片压缩更激进，加快AI识别
+  }, 1000, 0.72); // 控制请求体积，避免超过 Vercel 4.5MB 限制
 }
 
 // AI 识别食物
@@ -1212,6 +1214,8 @@ function estimateDietCalories(force) {
 function showNutriAlert(tags, category, food, advice) {
   const el = document.getElementById('dietNutriAlert');
   if (!tags || tags.length === 0) { el.innerHTML = ''; return; }
+  const safeFood = escapeHtml(food || '食物');
+  const safeAdvice = advice ? escapeHtml(advice) : '';
 
   const warnTags = tags.filter(t => ['高糖', '高脂'].includes(t));
   const goodTags = tags.filter(t => ['低卡', '高纤维', '高蛋白', '控糖友好'].includes(t));
@@ -1221,16 +1225,16 @@ function showNutriAlert(tags, category, food, advice) {
     // 有警告标签时，只显示警告，不显示"推荐多吃"，避免矛盾提示
     html += `<div class="alert-bar danger" style="margin-bottom:6px">
       <span class="alert-icon">⚠️</span>
-      <div><strong>${food}</strong> 含 ${warnTags.join('、')} 成分，孕晚期应少吃，避免体重增长过快和血糖波动${advice ? '<br>💬 ' + advice : ''}</div>
+      <div><strong>${safeFood}</strong> 含 ${warnTags.join('、')} 成分，孕晚期应少吃，避免体重增长过快和血糖波动${safeAdvice ? '<br>💬 ' + safeAdvice : ''}</div>
     </div>`;
   } else if (goodTags.length > 0) {
     html += `<div class="alert-bar ok" style="margin-bottom:6px">
       <span class="alert-icon">✅</span>
-      <div><strong>${food}</strong> ${goodTags.join('、')}，适合孕期多吃，有助于控重和营养均衡${advice ? '<br>💬 ' + advice : ''}</div>
+      <div><strong>${safeFood}</strong> ${goodTags.join('、')}，适合孕期多吃，有助于控重和营养均衡${safeAdvice ? '<br>💬 ' + safeAdvice : ''}</div>
     </div>`;
   } else {
     html = `<div class="alert-bar" style="background:#f3f4f6;margin-bottom:6px">
-      <span class="alert-icon">📊</span><div><strong>${food}</strong> 营养适中，注意控制份量即可</div>
+      <span class="alert-icon">📊</span><div><strong>${safeFood}</strong> 营养适中，注意控制份量即可</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -1248,7 +1252,8 @@ async function aiRecognizeDiet() {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getAIToken() },
       body: JSON.stringify({ image: dietPhotoData, type: 'diet' })
     });
-    const result = await resp.json();
+    const result = await resp.json().catch(() => ({ error: 'AI服务器返回了无法解析的内容' }));
+    if (!resp.ok) { resultEl.textContent = '❌ ' + (result.error || `服务器返回错误 ${resp.status}`); return; }
     if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
     if (result.items && result.items.length > 0) {
       const item = result.items[0];
@@ -1261,7 +1266,7 @@ async function aiRecognizeDiet() {
         });
       }
       const advice = result.advice ? ' | 💬 ' + result.advice : '';
-      resultEl.innerHTML = `✅ 识别到: ${item.food} · ${item.calories}kcal${advice}`;
+      resultEl.textContent = `✅ 识别到: ${item.food} · ${item.calories}kcal${advice}`;
       showNutriAlert(item.tags || [], item.category || '其他', item.food, result.advice);
       showToast('AI识别完成');
     } else if (result.raw) {
@@ -1296,8 +1301,8 @@ async function aiRecognizeFinance() {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
-    if (!resp.ok) { resultEl.textContent = '❌ 服务器返回错误: ' + resp.status + ' ' + resp.statusText; return; }
-    const result = await resp.json();
+    const result = await resp.json().catch(() => ({ error: 'AI服务器返回了无法解析的内容' }));
+    if (!resp.ok) { resultEl.textContent = '❌ ' + (result.error || `服务器返回错误 ${resp.status}`); return; }
     if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
     if (result.items && result.items.length > 0) {
       if (result.items.length === 1) {
@@ -1342,7 +1347,7 @@ async function aiRecognizeFinance() {
     let errMsg = err.message;
     if (err.name === 'AbortError') errMsg = '请求超时（60秒），服务器可能未响应或图片太大';
     else if (err.message === 'Load failed') errMsg = '网络连接失败，请检查AI服务器地址是否正确、服务器是否在线';
-    resultEl.innerHTML = '❌ 请求失败: ' + errMsg + '<br><span style="font-size:12px;color:var(--text-light)">服务器: ' + serverUrl + '</span>';
+    resultEl.textContent = '❌ 请求失败: ' + errMsg + '；请检查 AI 服务地址、访问密码和网络连接';
   } finally {
     btn.disabled = false; btn.textContent = '🤖 AI识别';
   }
@@ -1477,7 +1482,7 @@ function showAISettings() {
     const cleanUrl = url.trim().replace(/\/$/, '');
     setAIServerUrl(cleanUrl);
     if (cleanUrl) {
-      const token = prompt('请输入AI访问密码（Vercel环境变量里的AUTH_TOKEN）：\n\n留空则不加密码保护', currentToken);
+      const token = prompt('请输入AI访问密码（必须与 Vercel 环境变量 AUTH_TOKEN 一致）：', currentToken);
       if (token !== null) {
         setAIToken(token.trim());
       }
