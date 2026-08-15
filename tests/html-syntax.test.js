@@ -15,6 +15,7 @@ test("mobile cloud login supports in-app verification", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /id="cloudOtp"/);
   assert.match(html, /id="cloudMagicLink"/);
+  assert.match(html, /id="cloudVerifyStep" style="display:block/);
   assert.match(html, /supabaseClient\.auth\.verifyOtp\(verifyArgs\)/);
   assert.match(html, /发送次数已达上限，请查看已收到的邮件/);
 });
