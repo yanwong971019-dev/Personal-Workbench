@@ -2568,11 +2568,14 @@ const SUPABASE_SYNC_TABLE = 'life_workbench_snapshots';
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
 let cloudSyncUser = null;
 let cloudSyncTimer = null;
+let cloudSyncReady = false;
+let cloudFirstUploadShown = false;
+const CLOUD_PENDING_EMAIL_KEY = 'cloud_sync_pending_email';
 
 function cloudSyncButton() { return document.getElementById('cloudSyncButton'); }
 function updateCloudSyncButton() {
   const button = cloudSyncButton(); if (!button) return;
-  button.textContent = cloudSyncUser ? '☁️ 已自动同步' : '☁️ 登录同步';
+  button.textContent = cloudSyncUser ? (cloudSyncReady ? '☁️ 已自动同步' : '☁️ 已登录待确认') : '☁️ 登录同步';
   button.style.color = cloudSyncUser ? 'var(--green)' : '';
 }
 function openCloudSync() {
@@ -2580,43 +2583,106 @@ function openCloudSync() {
   const modal = document.createElement('div'); modal.id = 'cloudSyncModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(45,32,27,.42);display:flex;align-items:center;justify-content:center;padding:20px;';
   const signedIn = !!cloudSyncUser;
-  modal.innerHTML = '<div style="width:min(420px,100%);background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">☁️ 自动云同步</div><div style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:16px">' + (signedIn ? '已登录。此设备会自动读取并保存你的最新记录。' : '输入常用邮箱，验证后即可在手机、iPad 和电脑自动同步同一份记录。') + '</div>' + (signedIn ? '<button id="cloudSignOut" class="btn-sm" style="width:100%">退出此设备</button>' : '<input id="cloudEmail" type="email" placeholder="你的常用邮箱" autocomplete="email" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:15px"><button id="cloudSignIn" class="btn-primary" style="width:100%;margin-top:12px">发送登录邮件</button>') + '<button id="cloudClose" class="btn-sm" style="width:100%;margin-top:10px">关闭</button></div>';
+  const signedInText = cloudSyncReady ? '已登录，此设备正在自动同步。' : '已登录，正在等待确认用哪台设备的数据建立云端记录。';
+  const loginForm = '<input id="cloudEmail" type="email" placeholder="你的常用邮箱" autocomplete="email" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:16px"><button id="cloudSignIn" class="btn-primary" style="width:100%;margin-top:12px">发送登录邮件</button><div id="cloudVerifyStep" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #eadfd9"><div style="font-size:13px;color:#806f66;line-height:1.65;margin-bottom:10px">如果邮件里有验证码，请直接输入；如果只有“登录”按钮，请长按按钮复制链接，再回到这里粘贴。</div><input id="cloudOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="邮件验证码（6–8位）" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:17px;letter-spacing:2px"><input id="cloudMagicLink" type="url" inputmode="url" placeholder="或粘贴邮件登录链接" style="box-sizing:border-box;width:100%;padding:11px;margin-top:9px;border:1px solid #e7d5cc;border-radius:10px;font-size:14px"><button id="cloudVerify" class="btn-primary" style="width:100%;margin-top:12px">验证并登录</button></div>';
+  modal.innerHTML = '<div style="width:min(420px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">☁️ 自动云同步</div><div id="cloudSyncHelp" style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:16px">' + (signedIn ? signedInText : '输入常用邮箱，在当前生活台内完成验证，即可同步手机、iPad 和电脑。') + '</div>' + (signedIn ? '<button id="cloudSignOut" class="btn-sm" style="width:100%">退出此设备</button>' : loginForm) + '<button id="cloudClose" class="btn-sm" style="width:100%;margin-top:10px">关闭</button></div>';
   document.body.appendChild(modal);
   document.getElementById('cloudClose').onclick = () => modal.remove();
-  if (signedIn) document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
-  else document.getElementById('cloudSignIn').onclick = async () => {
-    const email = document.getElementById('cloudEmail').value.trim();
-    if (!email) { showToast('请输入邮箱'); return; }
-    const { error } = await supabaseClient.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
-    if (error) { showToast('邮件发送失败：' + error.message); return; }
-    showToast('登录邮件已发送，请在邮箱中确认'); modal.remove();
-  };
+  if (signedIn) document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; cloudSyncReady = false; cloudFirstUploadShown = false; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
+  else {
+    const pendingEmail = localStorage.getItem(CLOUD_PENDING_EMAIL_KEY) || '';
+    if (pendingEmail) { document.getElementById('cloudEmail').value = pendingEmail; document.getElementById('cloudVerifyStep').style.display = 'block'; }
+    document.getElementById('cloudSignIn').onclick = async () => {
+      const email = document.getElementById('cloudEmail').value.trim();
+      if (!email) { showToast('请输入邮箱'); return; }
+      const sendButton = document.getElementById('cloudSignIn'); sendButton.disabled = true; sendButton.textContent = '正在发送…';
+      const { error } = await supabaseClient.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+      sendButton.disabled = false; sendButton.textContent = '重新发送登录邮件';
+      if (error) { showToast('邮件发送失败：' + error.message); return; }
+      localStorage.setItem(CLOUD_PENDING_EMAIL_KEY, email);
+      document.getElementById('cloudVerifyStep').style.display = 'block';
+      document.getElementById('cloudSyncHelp').textContent = '邮件已发送。请留在主屏幕生活台内完成下面的验证。';
+      showToast('登录邮件已发送');
+    };
+    document.getElementById('cloudVerify').onclick = async () => {
+      const email = document.getElementById('cloudEmail').value.trim() || localStorage.getItem(CLOUD_PENDING_EMAIL_KEY) || '';
+      const token = document.getElementById('cloudOtp').value.trim();
+      const pastedLink = document.getElementById('cloudMagicLink').value.trim();
+      if (!email) { showToast('请输入接收邮件的邮箱'); return; }
+      let verifyArgs;
+      let verifyFallback = null;
+      if (pastedLink) {
+        try {
+          const loginUrl = new URL(pastedLink);
+          const tokenHash = loginUrl.searchParams.get('token_hash') || loginUrl.searchParams.get('token');
+          const linkType = loginUrl.searchParams.get('type') || 'email';
+          if (!tokenHash) throw new Error('链接中没有验证信息');
+          verifyArgs = { token_hash: tokenHash, type: linkType };
+          if (linkType === 'magiclink') verifyFallback = { token_hash: tokenHash, type: 'email' };
+        } catch (error) { showToast('请粘贴邮件按钮的完整链接'); return; }
+      } else {
+        if (!/^\d{6,8}$/.test(token)) { showToast('请输入邮件中的6–8位验证码'); return; }
+        verifyArgs = { email, token, type: 'email' };
+      }
+      const verifyButton = document.getElementById('cloudVerify'); verifyButton.disabled = true; verifyButton.textContent = '正在验证…';
+      let { error } = await supabaseClient.auth.verifyOtp(verifyArgs);
+      if (error && verifyFallback) ({ error } = await supabaseClient.auth.verifyOtp(verifyFallback));
+      verifyButton.disabled = false; verifyButton.textContent = '验证并登录';
+      if (error) { showToast('验证失败，请检查邮件内容后重试'); return; }
+      localStorage.removeItem(CLOUD_PENDING_EMAIL_KEY); modal.remove(); showToast('登录成功，请确认本设备数据');
+    };
+  }
 }
 async function pushCloudSnapshot() {
-  if (!supabaseClient || !cloudSyncUser || !navigator.onLine) return;
+  if (!supabaseClient || !cloudSyncUser || !cloudSyncReady || !navigator.onLine) return false;
   ensureTimestamps(data);
   const { error } = await supabaseClient.from(SUPABASE_SYNC_TABLE).upsert({ user_id: cloudSyncUser.id, payload: data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-  if (error) console.warn('云同步保存失败：', error.message);
+  if (error) { console.warn('云同步保存失败：', error.message); return false; }
+  return true;
 }
 function queueCloudSnapshot() { clearTimeout(cloudSyncTimer); cloudSyncTimer = setTimeout(pushCloudSnapshot, 1200); }
+function latestCloudRecordDate() {
+  const dates = ['weights','diets','finances','exercises'].flatMap(key => (data[key] || []).map(item => item?.date).filter(Boolean)).sort();
+  return dates.length ? dates[dates.length - 1] : '暂无日期';
+}
+function openCloudFirstUpload() {
+  if (!cloudSyncUser || cloudSyncReady || cloudFirstUploadShown || document.getElementById('cloudFirstUploadModal')) return;
+  cloudFirstUploadShown = true;
+  const modal = document.createElement('div'); modal.id = 'cloudFirstUploadModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(45,32,27,.46);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = '<div style="width:min(420px,100%);background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">确认首次云端备份</div><div style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:14px">云端目前没有记录。请确认下面是这台设备里的最新数据，再建立云端基准。</div><div style="background:#f7eee8;border-radius:12px;padding:12px;font-size:14px;line-height:1.8;margin-bottom:14px">最新日期：<b>' + latestCloudRecordDate() + '</b><br>体重：' + (data.weights || []).length + ' 条　饮食：' + (data.diets || []).length + ' 条<br>账目：' + (data.finances || []).length + ' 条　运动：' + (data.exercises || []).length + ' 条</div><button id="cloudUseThisDevice" class="btn-primary" style="width:100%">确认，用本设备建立云端</button><button id="cloudUploadLater" class="btn-sm" style="width:100%;margin-top:10px">暂不上传</button></div>';
+  document.body.appendChild(modal);
+  document.getElementById('cloudUploadLater').onclick = () => { cloudFirstUploadShown = false; modal.remove(); showToast('已暂停首次上传'); };
+  document.getElementById('cloudUseThisDevice').onclick = async () => {
+    const button = document.getElementById('cloudUseThisDevice'); button.disabled = true; button.textContent = '正在建立云端备份…';
+    cloudSyncReady = true;
+    const success = await pushCloudSnapshot();
+    if (!success) { cloudSyncReady = false; cloudFirstUploadShown = false; button.disabled = false; button.textContent = '重试建立云端'; showToast('云端备份失败，请稍后重试'); return; }
+    modal.remove(); cloudFirstUploadShown = false; updateCloudSyncButton(); showToast('云端备份已建立');
+  };
+}
 async function pullCloudSnapshot() {
   if (!supabaseClient || !cloudSyncUser) return;
   const { data: row, error } = await supabaseClient.from(SUPABASE_SYNC_TABLE).select('payload').eq('user_id', cloudSyncUser.id).maybeSingle();
   if (error) { console.warn('云同步读取失败：', error.message); showToast('云同步读取失败'); return; }
   if (row && row.payload) {
+    cloudSyncReady = true; cloudFirstUploadShown = false;
     const localEmpty = !data || (!data.weights?.length && !data.diets?.length && !data.finances?.length && !data.exercises?.length);
     data = mergeData(data, row.payload, localEmpty); ensureTimestamps(data); localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); renderAll();
+    updateCloudSyncButton();
+    await pushCloudSnapshot();
+  } else {
+    cloudSyncReady = false; updateCloudSyncButton(); openCloudFirstUpload();
   }
-  await pushCloudSnapshot();
 }
 async function initCloudSync() {
   if (!supabaseClient) return;
   const footer = document.querySelector('.sidebar-footer');
   if (footer && !cloudSyncButton()) { const button = document.createElement('button'); button.id = 'cloudSyncButton'; button.className = 'btn-sm'; button.style.cssText = 'width:100%;margin:0 0 8px'; button.onclick = openCloudSync; footer.insertBefore(button, footer.firstChild); }
   const { data: { session } } = await supabaseClient.auth.getSession();
-  cloudSyncUser = session?.user || null; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot();
+  cloudSyncUser = session?.user || null; cloudSyncReady = false; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot();
   else if (!localStorage.getItem('cloud_sync_prompt_seen')) { localStorage.setItem('cloud_sync_prompt_seen', '1'); setTimeout(openCloudSync, 700); }
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => { cloudSyncUser = session?.user || null; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot(); });
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot(); });
 }
 const saveDataBeforeCloudSync = saveData;
 saveData = function() { saveDataBeforeCloudSync(); queueCloudSnapshot(); };
