@@ -131,6 +131,47 @@ test("imports require confirmation and preserve a downloadable recovery backup",
   assert.match(html, /IMPORT_RECOVERY_KEY/);
   assert.match(html, /确认导入，并先备份当前数据/);
   assert.match(html, /normalizeImportedData\(JSON\.parse\(e\.target\.result\)\)/);
+  assert.match(html, /'bodyMeasurements','recoveryChecks'/);
+  assert.match(html, /imported\.postpartumProfile/);
+});
+
+test("postpartum starts only after a confirmed birth date", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const functionSource = extractNamedFunction(html, "getPregnancyInfo");
+  class FixedDate extends Date {
+    constructor(value) { super(value === undefined ? "2026-08-30T12:00:00+08:00" : value); }
+  }
+  const getInfo = (data) => new Function(
+    "data", "DUE_DATE", "Date",
+    `${functionSource}; return getPregnancyInfo;`,
+  )(data, new FixedDate("2026-08-25T00:00:00+08:00"), FixedDate)();
+
+  assert.equal(getInfo({ postpartumProfile: {} }).phase, "pregnancy");
+  assert.equal(getInfo({ postpartumProfile: { birthDate: "2026-08-28" } }).phase, "postpartum");
+  assert.equal(getInfo({ postpartumProfile: { birthDate: "2026-08-28" } }).daysPassed, 2);
+});
+
+test("postpartum coach blocks unsafe or unapproved training", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const stageSource = extractNamedFunction(html, "getPostpartumCoachStage");
+  const planSource = extractNamedFunction(html, "getRecommendedPostpartumPlan");
+  const library = [{ id: "safe", stage: "recovery", minutes: 5, targets: ["整体恢复"] }];
+  const createPlan = (data) => new Function(
+    "data", "POSTPARTUM_EXERCISE_LIBRARY", "COACH_STAGE_RANK",
+    `${stageSource}; ${planSource}; return getRecommendedPostpartumPlan;`,
+  )(data, library, { recovery: 0, base: 1, shape: 2 });
+  const info = { daysPassed: 20 };
+
+  assert.equal(createPlan({ postpartumProfile: { clearance: "light" } })(info, { safety: "symptoms", energy: "一般", minutes: 10 }).status, "blocked");
+  assert.equal(createPlan({ postpartumProfile: { clearance: "none" } })(info, { safety: "clear", energy: "一般", minutes: 10 }).status, "blocked");
+  assert.equal(createPlan({ postpartumProfile: { clearance: "light", bodyGoal: "整体恢复" } })(info, { safety: "clear", energy: "一般", minutes: 10 }).status, "ready");
+});
+
+test("new postpartum records support synced deletion", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /MERGEABLE_ARRAYS[^;]*'bodyMeasurements'[^;]*'recoveryChecks'/s);
+  assert.match(extractNamedFunction(html, "deleteTodayRecoveryCheck"), /markDeletedForCloud\('recoveryChecks'/);
+  assert.match(extractNamedFunction(html, "deleteBodyMeasurement"), /markDeletedForCloud\('bodyMeasurements'/);
 });
 
 test("AI recognition has a timeout and specific recovery message", async () => {

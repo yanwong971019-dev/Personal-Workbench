@@ -148,6 +148,13 @@ tr:hover { background:var(--primary-bg); }
 .progress-bar-fill { height:100%; background:var(--primary-gradient); border-radius:6px; transition:width .5s ease; }
 .progress-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--text-light); margin-top:4px; }
 .postpartum-banner { background:linear-gradient(135deg,#e8f0eb,#e0f2fe); border-radius:var(--radius-lg); padding:20px 24px; margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.coach-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.coach-plan { border:1px solid #dcebe3; background:#f6fbf8; border-radius:14px; padding:14px; margin-top:10px; }
+.coach-plan h4 { margin-bottom:4px; color:var(--green); }
+.coach-meta { font-size:12px; color:var(--text-light); line-height:1.6; }
+.coach-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.safety-note { font-size:12px; line-height:1.65; color:var(--text-light); background:#fff7ed; border-radius:10px; padding:10px; margin-top:10px; }
+.goal-chip { display:inline-flex; align-items:center; gap:4px; padding:5px 9px; border-radius:999px; background:var(--primary-bg); color:var(--primary); font-size:12px; margin:3px; }
 /* 产检卡片 */
 .checkup-card { border-left:3px solid var(--primary); padding:8px 0 8px 12px; margin-bottom:8px; }
 .checkup-card .cu-date { font-size:12px; color:var(--text-light); } .checkup-card .cu-week { font-size:13px; color:var(--primary); font-weight:500; }
@@ -338,28 +345,25 @@ tr:hover { background:var(--primary-bg); }
         <div class="card">
           <div class="card-title pink">🩺 <span id="recoveryLabel">产后恢复</span></div>
           <div id="recoverySection">
-            <p style="color:var(--text-light);font-size:13px;margin-bottom:16px">宝宝出生后自动激活产后恢复记录功能。</p>
+            <p style="color:var(--text-light);font-size:13px;margin-bottom:16px">宝宝出生后由你手动确认进入产后阶段，孕期历史会完整保留。</p>
             <p style="color:var(--text-light);font-size:13px">预产期：<strong>2026年8月25日</strong>，还剩 <strong id="daysLeftPreg">--</strong> 天</p>
+            <div class="form-row" style="margin-top:14px">
+              <div class="form-group"><label>实际分娩日期</label><input type="date" id="birthDate"></div>
+              <div class="form-group"><label>分娩方式</label><select id="deliveryMode"><option value="">请选择</option><option>顺产</option><option>剖宫产</option></select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>喂养方式</label><select id="postpartumFeeding"><option>纯母乳</option><option>混合喂养</option><option>配方奶</option></select></div>
+              <div class="form-group"><label>运动许可</label><select id="postpartumClearance"><option value="none">尚未咨询</option><option value="light">允许轻柔活动</option><option value="regular">允许逐步恢复常规运动</option></select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>第一阶段目标体重 (kg)</label><input type="number" id="postpartumGoalWeight" step="0.1" value="50"></div>
+              <div class="form-group"><label>塑形重点</label><select id="postpartumBodyGoal"><option value="整体恢复">整体恢复</option><option value="薄背体态">薄背体态</option><option value="核心腰腹">核心腰腹</option><option value="臀腿塑形">臀腿塑形</option></select></div>
+            </div>
+            <button class="btn" onclick="activatePostpartum()" style="margin-top:8px">确认宝宝已出生，进入产后阶段</button>
           </div>
           <div id="recoveryActive" style="display:none">
-            <div class="form-row">
-              <div class="form-group"><label>日期</label><input type="date" id="ppDate"></div>
-              <div class="form-group"><label>产后天数</label><input type="text" id="ppDay" readonly></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>恶露情况</label><select id="ppLochia"><option value="">--</option><option>血性恶露</option><option>浆液恶露</option><option>白色恶露</option><option>已干净</option></select></div>
-              <div class="form-group"><label>伤口恢复</label><select id="ppWound"><option value="">--</option><option>疼痛明显</option><option>轻微不适</option><option>基本恢复</option><option>完全恢复</option></select></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>哺乳情况</label><select id="ppFeeding"><option value="">--</option><option>纯母乳</option><option>混合喂养</option><option>配方奶</option></select></div>
-              <div class="form-group"><label>哺乳次数/量</label><input type="text" id="ppFeedQty" placeholder="如 8次"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>情绪状态</label><select id="ppMood"><option value="">--</option><option>😊 很好</option><option>😐 一般</option><option>😢 低落</option><option>😰 焦虑</option></select></div>
-              <div class="form-group"><label>睡眠 (小时)</label><input type="number" id="ppSleep" step="0.5" placeholder="如 5"></div>
-            </div>
-            <div class="form-row"><div class="form-group full"><label>备注</label><textarea id="ppNote" rows="2"></textarea></div></div>
-            <button class="btn" onclick="addPostpartum()" style="margin-top:8px">记录</button>
+            <div id="postpartumProfileSummary"></div>
+            <button class="btn outline" onclick="editPostpartumProfile()" style="margin-top:10px">修改产后档案</button>
           </div>
           <div id="recoveryList" style="margin-top:16px"></div>
         </div>
@@ -574,8 +578,9 @@ tr:hover { background:var(--primary-bg); }
 
     <!-- 运动 -->
     <div class="page" id="page-exercise">
-      <h1 class="page-title">运动记录</h1>
-      <p class="page-subtitle">记录运动，保持健康活力</p>
+      <h1 class="page-title">运动与产后塑形</h1>
+      <p class="page-subtitle">按恢复阶段和当天状态匹配经过审核的动作</p>
+      <div id="postpartumCoachSection"></div>
       <div class="card"><div class="card-title">添加运动</div>
         <div class="form-row">
           <div class="form-group"><label>日期</label><input type="date" id="exDate"></div>
@@ -588,6 +593,18 @@ tr:hover { background:var(--primary-bg); }
       </div>
       <div class="stats-grid" id="exerciseStats"></div>
       <div class="card"><div class="card-title">近 7 天运动消耗</div><div class="chart-container"><canvas id="exerciseChart"></canvas></div></div>
+      <div class="card" id="measurementCard" style="display:none"><div class="card-title">📐 身材围度</div>
+        <div class="form-row">
+          <div class="form-group"><label>日期</label><input type="date" id="measureDate"></div>
+          <div class="form-group"><label>腰围 cm</label><input type="number" id="measureWaist" step="0.1"></div>
+          <div class="form-group"><label>腹围 cm</label><input type="number" id="measureAbdomen" step="0.1"></div>
+          <div class="form-group"><label>臀围 cm</label><input type="number" id="measureHip" step="0.1"></div>
+          <div class="form-group"><label>大腿围 cm</label><input type="number" id="measureThigh" step="0.1"></div>
+          <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="saveBodyMeasurement()">保存围度</button></div>
+        </div>
+        <div id="measurementSummary"></div>
+      </div>
+      <div class="card" id="postpartumWeeklyCard" style="display:none"><div class="card-title">📋 产后恢复周报</div><div id="postpartumWeeklyReport"></div></div>
       <div class="card"><div class="card-title">运动记录</div>
         <div class="table-wrap"><table id="exerciseTable"><thead><tr><th>日期</th><th>类型</th><th>时长(分)</th><th>消耗(kcal)</th><th>备注</th><th></th></tr></thead><tbody></table></div>
       </div>
@@ -741,10 +758,13 @@ function loadData() {
       if (!d.diets) d.diets = [];
       if (!d.finances) d.finances = [];
       if (!d.budget) d.budget = {};
+      if (!d.bodyMeasurements) d.bodyMeasurements = [];
+      if (!d.recoveryChecks) d.recoveryChecks = [];
+      if (!d.postpartumProfile) d.postpartumProfile = {};
       return d;
     }
   } catch(e) {}
-  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: 50, checkups: [], postpartums: [], budget: {} };
+  return { weights: [], diets: [], finances: [], exercises: [], height: 160, prePregWeight: 50, checkups: [], postpartums: [], bodyMeasurements: [], recoveryChecks: [], postpartumProfile: {}, budget: {} };
 }
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function todayStr() { const d=new Date(); const tz=d.getTimezoneOffset()*60000; return new Date(d-tz).toISOString().slice(0,10); }
@@ -762,17 +782,19 @@ function getPregnancyInfo() {
   const today = new Date();
   // 取日期部分（去掉时分秒），用 UTC 日期做差
   const todayMid = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const birthDate = data?.postpartumProfile?.birthDate;
+  if (birthDate) {
+    const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
+    const birthMid = new Date(Date.UTC(birthYear, birthMonth - 1, birthDay));
+    const postpartumDays = Math.floor((todayMid.getTime() - birthMid.getTime()) / 86400000);
+    if (postpartumDays >= 0) return { phase:'postpartum', daysPassed:postpartumDays, weeks:Math.floor(postpartumDays/7), remainDays:postpartumDays%7, progress:Math.min(100,(postpartumDays/84)*100), daysToDue:0 };
+  }
   const dueMid = new Date(Date.UTC(DUE_DATE.getFullYear(), DUE_DATE.getMonth(), DUE_DATE.getDate()));
   const diffMs = todayMid.getTime() - dueMid.getTime();
   const diffDays = Math.round(diffMs / (1000*60*60*24));
   const totalDays = 280;
-  if (diffDays >= 0) {
-    const ppDays = diffDays;
-    return { phase:'postpartum', daysPassed:ppDays, weeks:Math.floor(ppDays/7), remainDays:ppDays%7, progress:Math.min(100,(ppDays/42)*100), daysToDue:0 };
-  } else {
-    const dfc = totalDays + diffDays;
-    return { phase:'pregnancy', daysPassed:dfc, weeks:Math.floor(dfc/7), remainDays:dfc%7, progress:Math.min(100,(dfc/totalDays)*100), daysToDue:-diffDays };
-  }
+  const dfc = totalDays + diffDays;
+  return { phase:'pregnancy', daysPassed:dfc, weeks:Math.floor(dfc/7), remainDays:Math.max(0,dfc%7), progress:Math.min(100,(dfc/totalDays)*100), daysToDue:Math.max(0,-diffDays), pastDueDays:Math.max(0,diffDays) };
 }
 function pregWeekStr(info) { return info.phase==='postpartum' ? `产后 ${info.weeks} 周${info.remainDays>0?'+'+info.remainDays+'天':''}` : `${info.weeks} 周 + ${info.remainDays} 天`; }
 
@@ -852,7 +874,7 @@ const GITHUB_API_BASE = 'https://api.github.com';
 const IMAGE_CACHE_KEY = 'workbench_image_cache';
 const IMAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const PUSH_DEBOUNCE_MS = 3000;
-const MERGEABLE_ARRAYS = ['weights', 'diets', 'finances', 'exercises', 'checkups', 'postpartums'];
+const MERGEABLE_ARRAYS = ['weights', 'diets', 'finances', 'exercises', 'checkups', 'postpartums', 'bodyMeasurements', 'recoveryChecks'];
 
 let syncState = { status: 'offline', lastSyncTime: 0, lastError: '', isSyncing: false, pendingPush: false };
 let pushDebounceTimer = null;
@@ -986,7 +1008,9 @@ function mergeData(localData, cloudData, preferCloud) {
   if (cloudData.budget) { if (!merged.budget) merged.budget = {}; Object.keys(cloudData.budget).forEach(bk => { const cb = cloudData.budget[bk], lb = merged.budget[bk]; if (!lb) merged.budget[bk] = cb; else { if ((cb._updatedAt || 0) > (lb._updatedAt || 0)) merged.budget[bk] = cb; } }); }
   if (cloudData.height !== undefined && (ct > lt || preferCloud)) merged.height = cloudData.height;
   if (cloudData.prePregWeight !== undefined && (ct > lt || preferCloud)) merged.prePregWeight = cloudData.prePregWeight;
-  if (!merged.budget) merged.budget = {}; if (!merged.checkups) merged.checkups = []; if (!merged.postpartums) merged.postpartums = []; if (merged.prePregWeight === undefined) merged.prePregWeight = null; if (!merged.weights) merged.weights = []; if (!merged.diets) merged.diets = []; if (!merged.finances) merged.finances = []; if (!merged.exercises) merged.exercises = [];
+  const localProfile = localData.postpartumProfile || {}, cloudProfile = cloudData.postpartumProfile || {};
+  merged.postpartumProfile = ((cloudProfile._updatedAt || 0) > (localProfile._updatedAt || 0) || preferCloud) ? cloudProfile : localProfile;
+  if (!merged.budget) merged.budget = {}; if (!merged.checkups) merged.checkups = []; if (!merged.postpartums) merged.postpartums = []; if (!merged.bodyMeasurements) merged.bodyMeasurements = []; if (!merged.recoveryChecks) merged.recoveryChecks = []; if (!merged.postpartumProfile) merged.postpartumProfile = {}; if (merged.prePregWeight === undefined) merged.prePregWeight = null; if (!merged.weights) merged.weights = []; if (!merged.diets) merged.diets = []; if (!merged.finances) merged.finances = []; if (!merged.exercises) merged.exercises = [];
   merged._updatedAt = Math.max(lt, ct, Date.now()); return merged;
 }
 
@@ -1670,24 +1694,35 @@ function addCheckup() {
   showToast('产检记录已添加'); renderPregnancy();
 }
 function deleteCheckup(id){const item=data.checkups.find(c=>c.id===id);markDeletedForCloud('checkups',item);data.checkups=data.checkups.filter(c=>c.id!==id);saveData();renderPregnancy();}
-function addPostpartum() {
-  const date=document.getElementById('ppDate').value;
-  const lochia=document.getElementById('ppLochia').value;
-  const wound=document.getElementById('ppWound').value;
-  const feeding=document.getElementById('ppFeeding').value;
-  const feedQty=document.getElementById('ppFeedQty').value.trim();
-  const mood=document.getElementById('ppMood').value;
-  const sleep=parseFloat(document.getElementById('ppSleep').value);
-  const note=document.getElementById('ppNote').value.trim();
-  if(!date){showToast('请填写日期');return;}
-  const info=getPregnancyInfo();
-  data.postpartums.push({id:Date.now(),date,ppDay:info.phase==='postpartum'?info.daysPassed:0,lochia,wound,feeding,feedQty,mood,sleep:sleep||0,note});
-  data.postpartums.sort((a,b)=>b.date.localeCompare(a.date));
-  saveData();
-  ['ppLochia','ppWound','ppFeeding','ppFeedQty','ppMood','ppSleep','ppNote'].forEach(id=>document.getElementById(id).value='');
-  showToast('产后记录已添加'); renderPregnancy();
-}
 function deletePostpartum(id){const item=data.postpartums.find(p=>p.id===id);markDeletedForCloud('postpartums',item);data.postpartums=data.postpartums.filter(p=>p.id!==id);saveData();renderPregnancy();}
+function activatePostpartum() {
+  const birthDate=document.getElementById('birthDate').value;
+  const deliveryMode=document.getElementById('deliveryMode').value;
+  const feeding=document.getElementById('postpartumFeeding').value;
+  const clearance=document.getElementById('postpartumClearance').value;
+  const goalWeight=parseFloat(document.getElementById('postpartumGoalWeight').value)||50;
+  const bodyGoal=document.getElementById('postpartumBodyGoal').value;
+  if(!birthDate||!deliveryMode){showToast('请填写实际分娩日期和分娩方式');return;}
+  if(birthDate>todayStr()){showToast('分娩日期不能晚于今天');return;}
+  if(goalWeight<47.5&&!confirm('这个目标低于 47.5kg，按你的身高已低于常用健康体重范围下沿。仍要保存为远期愿望吗？'))return;
+  if(!confirm('确认宝宝已出生并进入产后阶段？孕期历史会完整保留。'))return;
+  data.postpartumProfile={...(data.postpartumProfile||{}),birthDate,deliveryMode,feeding,clearance,goalWeight,bodyGoal,_updatedAt:Date.now()};
+  saveData(); renderAll(); showToast('已进入产后恢复阶段');
+}
+function editPostpartumProfile() {
+  const p=data.postpartumProfile||{};
+  document.getElementById('postpartumProfileModal')?.remove();
+  const modal=document.createElement('div');modal.id='postpartumProfileModal';modal.style.cssText='position:fixed;inset:0;z-index:10002;background:rgba(45,32,27,.46);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="width:min(430px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fffaf6;border-radius:18px;padding:22px"><div style="font-size:20px;font-weight:700;margin-bottom:12px">修改产后档案</div><div class="form-row"><div class="form-group"><label>分娩日期</label><input type="date" id="editBirthDate" value="${p.birthDate||''}"></div><div class="form-group"><label>分娩方式</label><select id="editDeliveryMode"><option ${p.deliveryMode==='顺产'?'selected':''}>顺产</option><option ${p.deliveryMode==='剖宫产'?'selected':''}>剖宫产</option></select></div></div><div class="form-row"><div class="form-group"><label>喂养方式</label><select id="editFeeding"><option ${p.feeding==='纯母乳'?'selected':''}>纯母乳</option><option ${p.feeding==='混合喂养'?'selected':''}>混合喂养</option><option ${p.feeding==='配方奶'?'selected':''}>配方奶</option></select></div><div class="form-group"><label>运动许可</label><select id="editClearance"><option value="none" ${p.clearance==='none'?'selected':''}>尚未咨询</option><option value="light" ${p.clearance==='light'?'selected':''}>允许轻柔活动</option><option value="regular" ${p.clearance==='regular'?'selected':''}>允许逐步恢复常规运动</option></select></div></div><div class="form-row"><div class="form-group"><label>第一阶段目标体重 kg</label><input type="number" id="editGoalWeight" step="0.1" value="${p.goalWeight||50}"></div><div class="form-group"><label>塑形重点</label><select id="editBodyGoal"><option ${p.bodyGoal==='整体恢复'?'selected':''}>整体恢复</option><option ${p.bodyGoal==='薄背体态'?'selected':''}>薄背体态</option><option ${p.bodyGoal==='核心腰腹'?'selected':''}>核心腰腹</option><option ${p.bodyGoal==='臀腿塑形'?'selected':''}>臀腿塑形</option></select></div></div><div class="coach-actions"><button class="btn" id="saveProfileEdit">保存</button><button class="btn outline" onclick="document.getElementById('postpartumProfileModal').remove()">取消</button></div></div>`;
+  document.body.appendChild(modal);
+  document.getElementById('saveProfileEdit').onclick=()=>{
+    const birthDate=document.getElementById('editBirthDate').value,goalWeight=parseFloat(document.getElementById('editGoalWeight').value)||50;
+    if(!birthDate||birthDate>todayStr()){showToast('请检查分娩日期');return;}
+    if(goalWeight<47.5&&!confirm('目标低于 47.5kg，仍要保存吗？'))return;
+    data.postpartumProfile={...p,birthDate,deliveryMode:document.getElementById('editDeliveryMode').value,feeding:document.getElementById('editFeeding').value,clearance:document.getElementById('editClearance').value,goalWeight,bodyGoal:document.getElementById('editBodyGoal').value,_updatedAt:Date.now()};
+    saveData();modal.remove();renderAll();showToast('产后档案已更新');
+  };
+}
 function renderPregnancy() {
   const info=getPregnancyInfo();
   const banner=document.getElementById('pregBanner');
@@ -1698,13 +1733,15 @@ function renderPregnancy() {
     banner.innerHTML=`<div class="postpartum-banner"><div class="pb-emoji">👶</div><div class="pb-info"><h3>产后 ${info.weeks} 周 ${info.remainDays>0?'+'+info.remainDays+'天':''}</h3><div class="pb-sub">宝宝出生已 ${info.daysPassed} 天</div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysPassed}</div><div class="pb-label">产后天数</div></div></div>`;
     document.getElementById('recoverySection').style.display='none';
     document.getElementById('recoveryActive').style.display='block';
-    document.getElementById('ppDay').value=`产后 ${info.weeks} 周 + ${info.remainDays} 天`;
+    const p=data.postpartumProfile||{};
+    const clearanceText={none:'尚未咨询运动许可',light:'允许轻柔活动',regular:'允许逐步恢复常规运动'}[p.clearance]||'未填写';
+    document.getElementById('postpartumProfileSummary').innerHTML=`<div class="coach-plan"><h4>${p.deliveryMode||'产后恢复'} · ${p.feeding||'喂养方式未填'}</h4><div class="coach-meta">分娩日期：${p.birthDate||'-'}<br>运动许可：${clearanceText}<br>第一阶段目标：${p.goalWeight||50}kg · ${p.bodyGoal||'整体恢复'}</div></div>`;
   } else {
     document.getElementById('pregPageTitle').textContent='孕期跟踪';
     document.getElementById('pregPageSub').textContent='预产期：2026年8月25日';
     document.getElementById('navPregnancyLabel').textContent='孕期跟踪';
     const wl=info.weeks>=37?'已足月 ✨':info.weeks>=28?'孕晚期':info.weeks>=13?'孕中期':'孕早期';
-    banner.innerHTML=`<div class="pregnancy-banner"><div class="pb-emoji">🤰</div><div class="pb-info"><h3>${pregWeekStr(info)} · ${wl}</h3><div class="pb-sub">预产期：2026年8月25日 · 已过 ${info.daysPassed} 天</div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysToDue}</div><div class="pb-label">天 倒计时</div></div></div>`;
+    banner.innerHTML=`<div class="pregnancy-banner"><div class="pb-emoji">🤰</div><div class="pb-info"><h3>${pregWeekStr(info)} · ${wl}</h3><div class="pb-sub">预产期：2026年8月25日 · ${info.pastDueDays>0?'超过预产期 '+info.pastDueDays+' 天，仍等待手动确认分娩':'已过 '+info.daysPassed+' 天'}</div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysToDue}</div><div class="pb-label">天 倒计时</div></div></div>`;
     document.getElementById('recoverySection').style.display='block';
     document.getElementById('recoveryActive').style.display='none';
     document.getElementById('daysLeftPreg').textContent=info.daysToDue;
@@ -1784,16 +1821,17 @@ function renderDiet() {
   const todayCalories=todayItems.reduce((s,d)=>s+d.calories,0);
   const target=getCalorieTarget();
   const info=getPregnancyInfo();
+  const targetLabel=info.phase==='postpartum'?'参考':'目标';
   // 热量提醒条
   const alertEl=document.getElementById('dietAlertBar');
   if(todayCalories===0){alertEl.innerHTML='';}
   else if(todayCalories>target+200){
     const over=todayCalories-target;
-    alertEl.innerHTML=`<div class="alert-bar danger"><span class="alert-icon">⚠️</span><div>今日已摄入 <strong>${todayCalories} kcal</strong>，超出目标 ${target} kcal 共 <strong>${over} kcal</strong>！孕晚期控重关键期，建议下一餐减少主食、避免甜食，适当散步消耗。</div></div>`;
+    alertEl.innerHTML=`<div class="alert-bar danger"><span class="alert-icon">⚠️</span><div>今日已摄入 <strong>${todayCalories} kcal</strong>，高于${targetLabel} ${target} kcal 共 <strong>${over} kcal</strong>。请先核对食物和份量记录；不要因为单日估算自动减少下一餐。</div></div>`;
   } else if(todayCalories>target){
-    alertEl.innerHTML=`<div class="alert-bar warn"><span class="alert-icon">📊</span><div>今日已摄入 <strong>${todayCalories} kcal</strong>，略超目标 ${target} kcal（${todayCalories-target} kcal），注意控制剩余餐次摄入。</div></div>`;
+    alertEl.innerHTML=`<div class="alert-bar warn"><span class="alert-icon">📊</span><div>今日已摄入 <strong>${todayCalories} kcal</strong>，略高于${targetLabel} ${target} kcal（${todayCalories-target} kcal）。餐食识别存在估算误差，请以完整、规律饮食为先。</div></div>`;
   } else {
-    alertEl.innerHTML=`<div class="alert-bar ok"><span class="alert-icon">✅</span><div>今日已摄入 <strong>${todayCalories} kcal</strong> / 目标 ${target} kcal，控制良好，继续保持！剩余预算 ${target-todayCalories} kcal</div></div>`;
+    alertEl.innerHTML=`<div class="alert-bar ok"><span class="alert-icon">✅</span><div>今日已记录 <strong>${todayCalories} kcal</strong> / ${targetLabel} ${target} kcal。该数值用于观察趋势，不替代营养师或医生建议。</div></div>`;
   }
   // 单餐提醒
   const mealCal={}; todayItems.forEach(d=>{mealCal[d.meal]=(mealCal[d.meal]||0)+d.calories;});
@@ -1960,10 +1998,10 @@ function renderDietWeeklyReport(weekItems, target) {
       <h4>${score==='A'?'✅ 本周控制很好':score==='B'?'⚠️ 本周基本达标，还有提升空间':'🚨 本周需要改善'}</h4>
       <ul>
         ${avgCal>target?`<li>日均热量超出目标 ${avgCal-target} kcal，建议减少零食和含糖饮品</li>`:`<li>日均热量在目标范围内，继续保持</li>`}
-        ${highSugar.length>2?`<li>本周摄入高糖食物 ${highSugar.length} 次（${highSugar.map(d=>d.food).join('、')}），孕晚期控糖建议减少</li>`:''}
+        ${highSugar.length>2?`<li>本周记录高糖食物 ${highSugar.length} 次（${highSugar.map(d=>d.food).join('、')}），可优先减少含糖饮品和高糖零食</li>`:''}
         ${highFat.length>1?`<li>本周摄入高脂食物 ${highFat.length} 次，建议减少油炸食品</li>`:''}
         ${(catStats['蔬菜']||0)<totalCal*0.15?`<li>蔬菜摄入偏少，建议每日蔬菜不少于 300g</li>`:''}
-        ${(catStats['蛋白质']||0)<totalCal*0.2?`<li>蛋白质摄入偏少，孕期需保证优质蛋白（鱼虾蛋奶豆）</li>`:''}
+        ${(catStats['蛋白质']||0)<totalCal*0.2?`<li>蛋白质记录偏少，可留意鱼、蛋、奶、豆和适量瘦肉等来源</li>`:''}
         ${score==='A'?'<li>营养均衡，各品类搭配合理，继续加油！</li>':''}
       </ul>
     </div>`;
@@ -2466,6 +2504,111 @@ function renderMonthlyReport(monthItems, lastMonthItems, expense, lastExpense, b
 }
 
 // ========== 运动模块 ==========
+const POSTPARTUM_EXERCISE_LIBRARY = [
+  {id:'breath-posture',name:'呼吸与姿势重置',stage:'recovery',minutes:5,targets:['整体恢复','核心腰腹','薄背体态'],intensity:'轻柔',steps:['坐姿或侧卧，保持自然呼吸','呼气时轻柔连接下腹，不憋气','全程以舒适、无疼痛为准'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'},
+  {id:'easy-walk',name:'舒适步行',stage:'recovery',minutes:10,targets:['整体恢复','臀腿塑形'],intensity:'轻柔',steps:['选择平坦路线','保持能够自然说话的速度','不追求步数和消耗热量'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'},
+  {id:'upper-mobility',name:'肩背舒展与肩胛活动',stage:'recovery',minutes:8,targets:['薄背体态','整体恢复'],intensity:'轻柔',steps:['在无痛范围活动肩颈和胸椎','肩膀远离耳朵，避免耸肩','动作缓慢，不追求大幅度'],tutorial:'https://www.nhs.uk/baby/support-and-services/keeping-fit-and-healthy-with-a-baby/'},
+  {id:'sit-stand',name:'坐站与臀腿激活',stage:'base',minutes:12,targets:['臀腿塑形','整体恢复'],intensity:'低到中等',steps:['使用稳固椅子并保持身体稳定','膝盖方向与脚尖一致','出现盆底坠胀或疼痛立即停止'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'},
+  {id:'back-control',name:'弹力带划船与肩胛控制',stage:'base',minutes:12,targets:['薄背体态'],intensity:'低到中等',steps:['选择轻阻力弹力带','先稳定肩胛，再缓慢拉动','腰腹保持自然，不憋气'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'},
+  {id:'core-base',name:'核心稳定入门',stage:'base',minutes:10,targets:['核心腰腹'],intensity:'低到中等',steps:['保持呼吸连续','腹部明显鼓起、疼痛或漏尿时停止','先保证控制，再增加次数'],tutorial:'https://www.nhs.uk/pregnancy/labour-and-birth/your-body/'},
+  {id:'back-shape',name:'背部与手臂塑形',stage:'shape',minutes:20,targets:['薄背体态'],intensity:'中等',steps:['使用能稳定完成动作的轻阻力','避免含胸耸肩代偿','最后两次稍费力但仍能保持动作质量'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'},
+  {id:'lower-shape',name:'臀腿力量训练',stage:'shape',minutes:20,targets:['臀腿塑形'],intensity:'中等',steps:['以稳定和动作质量为先','训练中保持正常呼吸','盆底压力、漏尿或伤口不适时停止'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'},
+  {id:'full-body',name:'全身低冲击力量',stage:'shape',minutes:25,targets:['整体恢复','核心腰腹'],intensity:'中等',steps:['选择无跳跃组合','每组间充分休息','完成后不应持续疲惫或疼痛'],tutorial:'https://www.acog.org/womens-health/faqs/exercise-after-pregnancy'}
+];
+const COACH_STAGE_RANK={recovery:0,base:1,shape:2};
+function getTodayRecoveryCheck(){return (data.recoveryChecks||[]).find(c=>c.date===todayStr())||null;}
+function getPostpartumCoachStage(info) {
+  const clearance=data.postpartumProfile?.clearance||'none';
+  if(clearance==='none')return 'none';
+  if(clearance==='light'||info.daysPassed<42)return 'recovery';
+  if(info.daysPassed<84)return 'base';
+  return 'shape';
+}
+function saveRecoveryCheck() {
+  const date=todayStr(),energy=document.getElementById('coachEnergy').value,minutes=parseInt(document.getElementById('coachMinutes').value)||10,safety=document.getElementById('coachSafety').value;
+  const existing=(data.recoveryChecks||[]).find(c=>c.date===date);
+  if(existing){Object.assign(existing,{energy,minutes,safety,_updatedAt:Date.now()});}
+  else data.recoveryChecks.push({id:Date.now(),date,energy,minutes,safety,_updatedAt:Date.now()});
+  saveData();renderExercise();showToast(safety==='clear'?'已生成今日建议':'已记录状态，今天暂停训练推荐');
+}
+function deleteTodayRecoveryCheck() {
+  const item=getTodayRecoveryCheck();
+  if(!item||!confirm('删除今天的恢复状态记录？删除会同步到其他设备。'))return;
+  markDeletedForCloud('recoveryChecks',item);
+  data.recoveryChecks=(data.recoveryChecks||[]).filter(check=>check.id!==item.id);
+  saveData();renderExercise();showToast('今日状态记录已删除');
+}
+function getRecommendedPostpartumPlan(info,check) {
+  if(!check)return {status:'check',items:[],message:'先用 20 秒完成今天的状态确认。'};
+  if(check.safety!=='clear')return {status:'blocked',items:[],message:'今天不生成运动计划。若有出血明显增加、胸痛、头晕、伤口疼痛、漏尿或盆底坠胀，请停止运动并联系医疗人员。'};
+  const stage=getPostpartumCoachStage(info);
+  if(stage==='none')return {status:'blocked',items:[],message:'尚未确认运动许可，暂不推荐动作。请先向医生或产后康复专业人员确认。'};
+  const goal=data.postpartumProfile?.bodyGoal||'整体恢复';
+  const limit=check.energy==='很累'?Math.min(10,check.minutes):check.energy==='一般'?Math.min(20,check.minutes):check.minutes;
+  const candidates=POSTPARTUM_EXERCISE_LIBRARY.filter(item=>COACH_STAGE_RANK[item.stage]<=COACH_STAGE_RANK[stage]).sort((a,b)=>Number(b.targets.includes(goal))-Number(a.targets.includes(goal))||a.minutes-b.minutes);
+  const items=[];let total=0;
+  for(const item of candidates){if(total+item.minutes<=limit||items.length===0){items.push(item);total+=item.minutes;}if(items.length>=3||total>=limit)break;}
+  return {status:'ready',stage,items,total,message:`根据产后第 ${info.daysPassed} 天、${check.energy}状态、${goal}目标和 ${check.minutes} 分钟可用时间匹配。`};
+}
+function completePostpartumPlan() {
+  const info=getPregnancyInfo(),check=getTodayRecoveryCheck(),plan=getRecommendedPostpartumPlan(info,check);
+  if(plan.status!=='ready'||!plan.items.length)return;
+  const feeling=document.getElementById('coachAfterFeeling').value;
+  const existing=data.exercises.find(e=>e.date===todayStr()&&e.coachPlan);
+  const record={date:todayStr(),type:'产后恢复计划',duration:plan.total,calories:0,note:plan.items.map(i=>i.name).join(' + '),afterFeeling:feeling,coachPlan:true,targets:[data.postpartumProfile?.bodyGoal||'整体恢复'],_updatedAt:Date.now()};
+  if(existing)Object.assign(existing,record);else data.exercises.push({id:Date.now(),...record});
+  if(feeling==='有不适'&&check){check.safety='symptoms';check._updatedAt=Date.now();}
+  saveData();renderExercise();showToast(feeling==='有不适'?'已记录不适，停止后续推荐':'今日计划已完成');
+}
+function renderPostpartumCoach(info) {
+  const host=document.getElementById('postpartumCoachSection'),measurementCard=document.getElementById('measurementCard'),weeklyCard=document.getElementById('postpartumWeeklyCard');
+  if(info.phase!=='postpartum'){
+    measurementCard.style.display='none';weeklyCard.style.display='none';
+    host.innerHTML='<div class="card"><div class="card-title">🌿 产后恢复与塑形教练</div><div style="color:var(--text-light);font-size:14px;line-height:1.7">分娩后在“孕期跟踪”中手动确认进入产后阶段，这里会根据分娩方式、运动许可、当天状态和塑形重点生成计划。</div></div>';
+    return;
+  }
+  measurementCard.style.display='block';weeklyCard.style.display='block';
+  const check=getTodayRecoveryCheck(),plan=getRecommendedPostpartumPlan(info,check),p=data.postpartumProfile||{};
+  const stageText={none:'等待运动许可',recovery:'恢复性活动',base:'基础力量',shape:'塑形训练'}[getPostpartumCoachStage(info)];
+  const planHtml=plan.status==='ready'?plan.items.map(item=>`<div class="coach-plan"><h4>${item.name} · ${item.minutes}分钟</h4><div class="coach-meta">${item.intensity} · ${item.targets.join(' / ')}</div><ul style="font-size:13px;margin:8px 0 0 18px">${item.steps.map(step=>`<li>${step}</li>`).join('')}</ul><div class="coach-actions"><a class="btn-sm" href="${item.tutorial}" target="_blank" rel="noopener">查看权威教程</a></div></div>`).join(''):`<div class="safety-note">${plan.message}</div>`;
+  host.innerHTML=`<div class="card"><div class="card-title">🌿 今日恢复计划 <span class="tag tag-green">${stageText}</span></div><div class="coach-meta">产后第 ${info.daysPassed} 天 · ${p.deliveryMode||'-'} · ${p.feeding||'-'} · 重点：${p.bodyGoal||'整体恢复'}</div><div class="coach-grid" style="margin-top:12px"><div class="form-group"><label>今天的状态</label><select id="coachEnergy"><option ${check?.energy==='很好'?'selected':''}>很好</option><option ${!check||check?.energy==='一般'?'selected':''}>一般</option><option ${check?.energy==='很累'?'selected':''}>很累</option></select></div><div class="form-group"><label>可用时间</label><select id="coachMinutes"><option value="5" ${check?.minutes===5?'selected':''}>5分钟</option><option value="10" ${!check||check?.minutes===10?'selected':''}>10分钟</option><option value="20" ${check?.minutes===20?'selected':''}>20分钟</option><option value="30" ${check?.minutes===30?'selected':''}>30分钟</option></select></div><div class="form-group"><label>运动前安全确认</label><select id="coachSafety"><option value="clear" ${!check||check?.safety==='clear'?'selected':''}>没有以下不适</option><option value="symptoms" ${check?.safety==='symptoms'?'selected':''}>有不适</option><option value="unsure" ${check?.safety==='unsure'?'selected':''}>不确定</option></select></div></div><div class="safety-note">若有出血明显增加、胸痛、头晕、伤口疼痛、漏尿或盆底坠胀，请选择“有不适”并暂停训练。</div><button class="btn" onclick="saveRecoveryCheck()" style="margin-top:12px">更新今日建议</button>${plan.status==='ready'?`<div style="margin-top:16px;font-size:13px;color:var(--text-light)">${plan.message}</div>${planHtml}<div class="coach-actions"><select id="coachAfterFeeling" style="min-width:150px"><option>感觉合适</option><option>比较轻松</option><option>太累</option><option>有不适</option></select><button class="btn" onclick="completePostpartumPlan()">完成并记录</button></div>`:planHtml}</div>`;
+  if(check){
+    const updateButton=host.querySelector('button[onclick="saveRecoveryCheck()"]');
+    updateButton?.insertAdjacentHTML('afterend','<button class="btn-sm" onclick="deleteTodayRecoveryCheck()" style="margin:12px 0 0 8px">删除今日状态</button>');
+  }
+}
+function saveBodyMeasurement() {
+  const date=document.getElementById('measureDate').value||todayStr();
+  const values={waist:parseFloat(document.getElementById('measureWaist').value)||0,abdomen:parseFloat(document.getElementById('measureAbdomen').value)||0,hip:parseFloat(document.getElementById('measureHip').value)||0,thigh:parseFloat(document.getElementById('measureThigh').value)||0};
+  if(!Object.values(values).some(Boolean)){showToast('请至少填写一项围度');return;}
+  const existing=data.bodyMeasurements.find(m=>m.date===date);
+  if(existing)Object.assign(existing,values,{_updatedAt:Date.now()});else data.bodyMeasurements.push({id:Date.now(),date,...values,_updatedAt:Date.now()});
+  data.bodyMeasurements.sort((a,b)=>a.date.localeCompare(b.date));saveData();renderExercise();showToast('围度已保存');
+}
+function deleteBodyMeasurement(id) {
+  const item=(data.bodyMeasurements||[]).find(measurement=>measurement.id===id);
+  if(!item||!confirm(`删除 ${item.date} 的围度记录？删除会同步到其他设备。`))return;
+  markDeletedForCloud('bodyMeasurements',item);
+  data.bodyMeasurements=data.bodyMeasurements.filter(measurement=>measurement.id!==id);
+  saveData();renderExercise();showToast('围度记录已删除');
+}
+function renderMeasurementSummary() {
+  const el=document.getElementById('measurementSummary'),items=(data.bodyMeasurements||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  if(!items.length){el.innerHTML='<div class="empty">建议每 2–4 周记录一次，不需要每天测量。</div>';return;}
+  const latest=items[items.length-1],previous=items.length>1?items[items.length-2]:null;
+  const field=(key,label)=>`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value primary">${latest[key]||'-'} <span style="font-size:13px">cm</span></div><div class="stat-trend">${previous&&latest[key]&&previous[key]?`较上次 ${(latest[key]-previous[key]).toFixed(1)}cm`:'暂无对比'}</div></div>`;
+  el.innerHTML=`<div style="font-size:12px;color:var(--text-light);margin:12px 0 8px">最近记录：${latest.date}</div><div class="stats-grid">${field('waist','腰围')}${field('abdomen','腹围')}${field('hip','臀围')}${field('thigh','大腿围')}</div>`;
+  const history=items.slice(-5).reverse().map(item=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f1e7e0"><span>${item.date} · 腰 ${item.waist||'-'} / 腹 ${item.abdomen||'-'} / 臀 ${item.hip||'-'} / 腿 ${item.thigh||'-'} cm</span><button class="btn-danger" onclick="deleteBodyMeasurement(${JSON.stringify(item.id)})">删除</button></div>`).join('');
+  el.insertAdjacentHTML('beforeend',`<div style="margin-top:14px"><b>最近记录</b>${history}</div>`);
+}
+function renderPostpartumWeeklyReport() {
+  const el=document.getElementById('postpartumWeeklyReport'),d7=getLastNDays(7),weekExercises=data.exercises.filter(e=>d7.includes(e.date)),weekDiets=data.diets.filter(d=>d7.includes(d.date));
+  const minutes=weekExercises.reduce((s,e)=>s+(e.duration||0),0),dietDays=new Set(weekDiets.map(d=>d.date)).size,checkDays=(data.recoveryChecks||[]).filter(c=>d7.includes(c.date)).length;
+  const weights=data.weights.slice().filter(w=>d7.includes(w.date)).sort((a,b)=>a.date.localeCompare(b.date));
+  const weightText=weights.length>1?`${weights[0].value} → ${weights[weights.length-1].value}kg`:(weights.length?`${weights[0].value}kg（仅1次）`:'本周未记录');
+  const target=data.postpartumProfile?.goalWeight||50;
+  el.innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-label">训练完成</div><div class="stat-value green">${weekExercises.length}<span style="font-size:13px"> 次</span></div><div class="stat-trend">共 ${minutes} 分钟</div></div><div class="stat-card"><div class="stat-label">体重趋势</div><div class="stat-value primary" style="font-size:18px">${weightText}</div><div class="stat-trend">第一阶段参考目标 ${target}kg</div></div><div class="stat-card"><div class="stat-label">饮食记录覆盖</div><div class="stat-value orange">${dietDays}<span style="font-size:13px"> / 7天</span></div><div class="stat-trend">记录不足时不评价热量</div></div><div class="stat-card"><div class="stat-label">恢复状态确认</div><div class="stat-value blue">${checkDays}<span style="font-size:13px"> 天</span></div></div></div><div class="safety-note">报告只描述趋势，不诊断恢复情况，也不会因短期体重变化自动削减饮食目标。</div>`;
+}
 function addExercise() {
   const date=document.getElementById('exDate').value;
   const type=document.getElementById('exType').value;
@@ -2480,6 +2623,7 @@ function addExercise() {
 }
 function deleteExercise(id){const item=data.exercises.find(e=>e.id===id);markDeletedForCloud('exercises',item);data.exercises=data.exercises.filter(e=>e.id!==id);saveData();renderExercise();}
 function renderExercise() {
+  const info=getPregnancyInfo();renderPostpartumCoach(info);
   const todayItems=data.exercises.filter(e=>e.date===todayStr());
   const weekItems=data.exercises.filter(e=>getLastNDays(7).includes(e.date));
   const todayCal=todayItems.reduce((s,e)=>s+e.calories,0);
@@ -2500,6 +2644,7 @@ function renderExercise() {
     type:'bar',data:{labels:d7.map(d=>d.slice(5)),datasets:[{label:'消耗(kcal)',data:d7.map(d=>data.exercises.filter(e=>e.date===d).reduce((s,e)=>s+e.calories,0)),backgroundColor:'#10b981',borderRadius:6}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
   });
+  if(info.phase==='postpartum'){document.getElementById('measureDate').value=todayStr();renderMeasurementSummary();renderPostpartumWeeklyReport();}
 }
 
 // ========== 仪表盘 ==========
@@ -2551,12 +2696,13 @@ function exportData() {
 }
 
 function importSummary(imported) {
-  return ['weights','diets','finances','exercises','checkups','postpartums']
-    .map(key => `${({ weights:'体重', diets:'饮食', finances:'账目', exercises:'运动', checkups:'产检', postpartums:'产后' })[key]} ${(imported[key] || []).length} 条`).join('　');
+  return ['weights','diets','finances','exercises','checkups','postpartums','bodyMeasurements','recoveryChecks']
+    .map(key => `${({ weights:'体重', diets:'饮食', finances:'账目', exercises:'运动', checkups:'产检', postpartums:'产后', bodyMeasurements:'围度', recoveryChecks:'恢复状态' })[key]} ${(imported[key] || []).length} 条`).join('　');
 }
 function normalizeImportedData(imported) {
   if (!imported || typeof imported !== 'object' || !Array.isArray(imported.weights) || !Array.isArray(imported.diets)) throw new Error('文件不是生活台导出的数据');
-  ['finances','exercises','checkups','postpartums'].forEach(key => { if (!Array.isArray(imported[key])) imported[key] = []; });
+  ['finances','exercises','checkups','postpartums','bodyMeasurements','recoveryChecks'].forEach(key => { if (!Array.isArray(imported[key])) imported[key] = []; });
+  if (!imported.postpartumProfile || typeof imported.postpartumProfile !== 'object') imported.postpartumProfile = {};
   if (!imported.budget || typeof imported.budget !== 'object') imported.budget = {};
   if (imported.prePregWeight === undefined) imported.prePregWeight = null;
   ensureTimestamps(imported);
@@ -2866,10 +3012,7 @@ function init() {
   document.getElementById('dietDate').value = todayStr();
   document.getElementById('finDate').value = todayStr();
   document.getElementById('exDate').value = todayStr();
-  const info = getPregnancyInfo();
-  if (info.phase === 'postpartum') {
-    document.getElementById('ppDate').value = todayStr();
-  }
+  document.getElementById('measureDate').value = todayStr();
   document.getElementById('cuDate').value = todayStr();
   // 更新分类
   updateFinCategories();
