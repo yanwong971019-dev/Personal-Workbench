@@ -123,9 +123,21 @@ tr:hover { background:var(--primary-bg); }
   .stats-grid { grid-template-columns:1fr 1fr; gap:12px; }
   .stat-card { padding:16px; }
   .stat-value { font-size:20px; }
-  .card { padding:16px; border-radius:var(--radius-md); }
+  .card { padding:15px; border-radius:var(--radius-md); margin-bottom:14px; }
+  .card:hover,.stat-card:hover { transform:none; box-shadow:var(--shadow); }
   .page-title { font-size:20px; }
   .form-row { grid-template-columns:1fr; }
+  #dashGreeting { padding:14px 16px !important; margin-bottom:12px !important; min-height:84px; }
+  #dashPregnancyBanner .pregnancy-banner,#dashPregnancyBanner .postpartum-banner { padding:14px 16px; margin-bottom:14px; gap:12px; }
+  #dashPregnancyBanner .pb-emoji { font-size:30px; }
+  #dashPregnancyBanner .pb-countdown { min-width:64px; }
+  #dashPregnancyBanner .pb-countdown .pb-days { font-size:30px; }
+  .home-quick .card-title { margin-bottom:10px; }
+  .home-quick-actions { display:grid !important; grid-template-columns:repeat(2,1fr); gap:9px !important; }
+  .home-quick-actions .btn { width:100%; min-height:44px; padding:9px 8px; }
+  input,select,textarea { min-height:44px; font-size:16px; }
+  .chart-container { height:230px; }
+  .chart-container.small { height:190px; }
 }
 @media (min-width:769px) and (max-width:1024px) {
   .sidebar { width:60px; }
@@ -155,6 +167,14 @@ tr:hover { background:var(--primary-bg); }
 .coach-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
 .safety-note { font-size:12px; line-height:1.65; color:var(--text-light); background:#fff7ed; border-radius:10px; padding:10px; margin-top:10px; }
 .goal-chip { display:inline-flex; align-items:center; gap:4px; padding:5px 9px; border-radius:999px; background:var(--primary-bg); color:var(--primary); font-size:12px; margin:3px; }
+.advanced-fields { border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin:10px 0 12px; background:#fffaf7; }
+.advanced-fields summary { cursor:pointer; color:var(--text-light); font-size:13px; font-weight:600; list-style:none; }
+.advanced-fields summary::-webkit-details-marker { display:none; }
+.advanced-fields summary::after { content:'＋'; float:right; color:var(--primary); }
+.advanced-fields[open] summary::after { content:'－'; }
+.advanced-fields[open] summary { margin-bottom:12px; }
+.mobile-menu-item { padding:10px 4px; border-radius:12px; cursor:pointer; min-height:58px; }
+.mobile-menu-item:active { background:var(--primary-bg); }
 /* 产检卡片 */
 .checkup-card { border-left:3px solid var(--primary); padding:8px 0 8px 12px; margin-bottom:8px; }
 .checkup-card .cu-date { font-size:12px; color:var(--text-light); } .checkup-card .cu-week { font-size:13px; color:var(--primary); font-weight:500; }
@@ -291,10 +311,8 @@ tr:hover { background:var(--primary-bg); }
     <div class="nav-item" data-page="exercise"><span class="nav-icon">🧘</span><span>运动记录</span></div>
     <div class="sidebar-footer">
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-sm" onclick="manualSync()">🔄同步</button>
         <button class="btn-sm" onclick="exportData()">导出</button>
         <button class="btn-sm" onclick="document.getElementById('importFile').click()">导入</button>
-        <button class="btn-sm" onclick="openSyncSettings()">⚙️设置</button>
         <button class="btn-sm" onclick="showAISettings()">🤖AI</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
       </div>
@@ -306,22 +324,20 @@ tr:hover { background:var(--primary-bg); }
     <div class="page active" id="page-dashboard">
       <div id="dashGreeting" style="background:var(--primary-gradient);color:#fff;border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-lg)"><span style="position:absolute;top:4px;right:8px;font-size:10px;opacity:0.6">v2026.08.15</span></div>
       <div id="dashPregnancyBanner"></div>
+      <div class="card home-quick"><div class="card-title">⚡ 快速记录</div>
+        <div class="home-quick-actions" style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn outline" onclick="switchToPage('diet')">🍽️ 记饮食</button>
+          <button class="btn outline" onclick="switchToPage('finance')">💰 记支出</button>
+          <button class="btn outline" onclick="switchToPage('weight')">⚖️ 记体重</button>
+          <button class="btn outline" onclick="switchToPage('exercise')">🧘 记运动</button>
+        </div>
+      </div>
       <div class="stats-grid" id="dashboardStats"></div>
       <div class="two-col">
         <div class="card"><div class="card-title">📈 体重趋势</div><div class="chart-container small"><canvas id="dashWeightChart"></canvas></div></div>
         <div class="card"><div class="card-title">💰 本周支出</div><div class="chart-container small"><canvas id="dashFinanceChart"></canvas></div></div>
       </div>
       <div class="card"><div class="card-title">📊 近 7 天热量摄入 vs 运动</div><div class="chart-container"><canvas id="dashCaloriesChart"></canvas></div></div>
-      <!-- 快速操作 -->
-      <div class="card"><div class="card-title">⚡ 快速录入</div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <button class="btn outline" onclick="switchToPage('weight')">⚖️ 记体重</button>
-          <button class="btn outline" onclick="switchToPage('diet')">🍽️ 记饮食</button>
-          <button class="btn outline" onclick="switchToPage('finance')">💰 记支出</button>
-          <button class="btn outline" onclick="switchToPage('exercise')">🧘 记运动</button>
-          <button class="btn outline" onclick="switchToPage('pregnancy')">🤰 孕期跟踪</button>
-        </div>
-      </div>
     </div>
 
     <!-- 孕期 & 产后 -->
@@ -378,10 +394,12 @@ tr:hover { background:var(--primary-bg); }
         <div class="form-row">
           <div class="form-group"><label>日期</label><input type="date" id="weightDate"></div>
           <div class="form-group"><label>体重 (kg)</label><input type="number" id="weightValue" step="0.1" placeholder="如 65.5"></div>
-          <div class="form-group"><label>身高 (cm)</label><input type="number" id="heightValue" step="0.1" value="160"></div>
-          <div class="form-group"><label>孕前体重 (kg)</label><input type="number" id="prePregWeightValue" step="0.1" value="50" onchange="updatePrePregWeight()"></div>
           <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addWeight()">添加</button></div>
         </div>
+        <details class="advanced-fields"><summary>身高和孕前体重（通常无需修改）</summary><div class="form-row">
+          <div class="form-group"><label>身高 (cm)</label><input type="number" id="heightValue" step="0.1" value="160"></div>
+          <div class="form-group"><label>孕前体重 (kg)</label><input type="number" id="prePregWeightValue" step="0.1" value="50" onchange="updatePrePregWeight()"></div>
+        </div></details>
       </div>
       <div class="stats-grid" id="weightStats"></div>
       <div class="card"><div class="card-title">体重趋势图</div><div class="chart-container"><canvas id="weightChart"></canvas></div></div>
@@ -411,23 +429,20 @@ tr:hover { background:var(--primary-bg); }
             </div>
           </div>
           <div class="form-group"><label>热量 (kcal)</label><input type="number" id="dietCalories" placeholder="如 200"></div>
+        </div>
+        <details class="advanced-fields"><summary>补充份量、分类和营养标签</summary><div class="form-row">
           <div class="form-group"><label>食物分类</label><select id="dietCategory"><option value="主食">主食</option><option value="蛋白质">蛋白质</option><option value="蔬菜">蔬菜</option><option value="水果">水果</option><option value="乳制品">乳制品</option><option value="零食">零食</option><option value="饮品">饮品</option><option value="其他">其他</option></select></div>
           <div class="form-group"><label>份量/备注</label><input type="text" id="dietNote" placeholder="如 300g（填完自动估算）" oninput="scheduleEstimateCalories()" onblur="scheduleEstimateCalories()"></div>
           <div class="form-group" style="display:flex;align-items:flex-end"><button type="button" class="btn outline" style="width:100%" onclick="estimateDietCalories(true)">🤖 估算热量</button></div>
-        </div>
+          <div class="form-group"><label>营养标签（可多选）</label>
+            <div class="tag-select" id="dietTags">
+              <span class="tag-chip" data-tag="高糖">高糖</span><span class="tag-chip" data-tag="高脂">高脂</span><span class="tag-chip" data-tag="高纤维">高纤维</span><span class="tag-chip" data-tag="高蛋白">高蛋白</span><span class="tag-chip" data-tag="低卡">低卡</span><span class="tag-chip" data-tag="控糖友好">控糖友好</span>
+            </div>
+          </div>
+        </div></details>
         <!-- 营养提醒条 -->
         <div id="dietNutriAlert" style="margin-top:8px"></div>
         <div class="form-row">
-          <div class="form-group"><label>营养标签（可多选）</label>
-            <div class="tag-select" id="dietTags">
-              <span class="tag-chip" data-tag="高糖">高糖</span>
-              <span class="tag-chip" data-tag="高脂">高脂</span>
-              <span class="tag-chip" data-tag="高纤维">高纤维</span>
-              <span class="tag-chip" data-tag="高蛋白">高蛋白</span>
-              <span class="tag-chip" data-tag="低卡">低卡</span>
-              <span class="tag-chip" data-tag="控糖友好">控糖友好</span>
-            </div>
-          </div>
           <div class="form-group photo-btn-wrap">
             <label>拍照留档 + AI识别</label>
             <input type="file" id="dietPhotoInput" accept="image/*" style="display:none" onchange="handleDietPhoto(event)">
@@ -504,8 +519,7 @@ tr:hover { background:var(--primary-bg); }
           <div class="form-group"><label>金额 (元)</label><input type="number" id="finAmount" step="0.01" placeholder="如 25.50"></div>
         </div>
         <!-- 物品明细 -->
-        <div class="item-fields" id="finItemFields">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-light)">📦 物品明细（一物一条）</div>
+        <details class="advanced-fields" id="finItemFields"><summary>补充产品、品牌、规格和备注</summary>
           <div class="form-row">
             <div class="form-group">
               <label>产品名称（输入可搜索历史购买）</label>
@@ -523,10 +537,10 @@ tr:hover { background:var(--primary-bg); }
             </div>
             <div class="form-group"><label>规格</label><input type="text" id="finSpec" placeholder="如 NB码"></div>
             <div class="form-group"><label>量/数量</label><input type="text" id="finQty" placeholder="如 1包"></div>
+            <div class="form-group"><label>备注</label><input type="text" id="finNote" placeholder="如 超市"></div>
           </div>
-        </div>
+        </details>
         <div class="form-row">
-          <div class="form-group"><label>备注</label><input type="text" id="finNote" placeholder="如 超市"></div>
           <div class="form-group photo-btn-wrap">
             <label>拍照/截图 + AI识别</label>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -624,29 +638,29 @@ tr:hover { background:var(--primary-bg); }
 <div id="mobileMoreMenu" style="display:none;position:fixed;bottom:70px;left:16px;right:16px;background:var(--card);border-radius:16px;padding:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);z-index:101;border:1px solid var(--border);" onclick="event.stopPropagation()">
   <div id="mobileCloudSyncStatus" style="font-size:12px;color:var(--green);text-align:center;margin:0 0 8px">登录同步后可跨设备自动更新</div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;font-size:12px;">
-    <div style="padding:8px 4px;border-radius:12px;" onclick="manualSync();closeMobileMore()">
-      <div style="font-size:22px;margin-bottom:4px">🔄</div>
-      <div>同步</div>
+    <div class="mobile-menu-item" onclick="switchToPage('pregnancy');closeMobileMore()">
+      <div style="font-size:22px;margin-bottom:4px">🤰</div>
+      <div>孕期/产后</div>
     </div>
-    <div style="padding:8px 4px;border-radius:12px;" onclick="exportData();closeMobileMore()">
-      <div style="font-size:22px;margin-bottom:4px">⬇️</div>
-      <div>导出</div>
+    <div class="mobile-menu-item" onclick="switchToPage('exercise');closeMobileMore()">
+      <div style="font-size:22px;margin-bottom:4px">🧘</div>
+      <div>运动恢复</div>
     </div>
-    <div style="padding:8px 4px;border-radius:12px;" onclick="document.getElementById('importFile').click();closeMobileMore()">
-      <div style="font-size:22px;margin-bottom:4px">⬆️</div>
-      <div>导入</div>
-    </div>
-    <div style="padding:8px 4px;border-radius:12px;" onclick="openSyncSettings();closeMobileMore()">
-      <div style="font-size:22px;margin-bottom:4px">⚙️</div>
-      <div>设置</div>
-    </div>
-    <div style="padding:8px 4px;border-radius:12px;" onclick="showAISettings();closeMobileMore()">
-      <div style="font-size:22px;margin-bottom:4px">🤖</div>
-      <div>AI</div>
-    </div>
-    <div style="padding:8px 4px;border-radius:12px;" onclick="openCloudSync();closeMobileMore()">
+    <div class="mobile-menu-item" onclick="openCloudSync();closeMobileMore()">
       <div style="font-size:22px;margin-bottom:4px">☁️</div>
       <div>云同步</div>
+    </div>
+    <div class="mobile-menu-item" onclick="exportData();closeMobileMore()">
+      <div style="font-size:22px;margin-bottom:4px">⬇️</div>
+      <div>导出备份</div>
+    </div>
+    <div class="mobile-menu-item" onclick="document.getElementById('importFile').click();closeMobileMore()">
+      <div style="font-size:22px;margin-bottom:4px">⬆️</div>
+      <div>导入备份</div>
+    </div>
+    <div class="mobile-menu-item" onclick="showAISettings();closeMobileMore()">
+      <div style="font-size:22px;margin-bottom:4px">🤖</div>
+      <div>AI设置</div>
     </div>
   </div>
 </div>
@@ -1161,12 +1175,7 @@ const __originalSaveData = saveData;
 saveData = function() { ensureTimestamps(data); __originalSaveData(); debouncedPush(); };
 
 (function injectSyncBar() {
-  const footer = document.querySelector('.sidebar-footer');
-  if (footer && !document.getElementById('syncStatusBar')) {
-    const bar = document.createElement('div'); bar.id = 'syncStatusBar';
-    bar.style.cssText = 'padding:6px 8px;margin-bottom:8px;border-radius:var(--radius-sm);background:var(--bg-secondary);font-size:0.8em;cursor:pointer;text-align:center';
-    bar.onclick = () => openSyncSettings(); footer.insertBefore(bar, footer.firstChild);
-  }
+  // 旧版 Gist 同步逻辑仅为兼容历史数据保留，不再向用户展示入口。
 })();
 
 (function injectSyncModal() {
@@ -2664,14 +2673,16 @@ function renderDashboard() {
     pbEl.innerHTML=`<div class="pregnancy-banner"><div class="pb-emoji">🤰</div><div class="pb-info"><h3>${pregWeekStr(info)}</h3><div class="pb-sub">预产期：2026年8月25日</div><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${info.progress}%"></div></div></div><div class="pb-countdown"><div class="pb-days">${info.daysToDue}</div><div class="pb-label">天 倒计时</div></div></div>`;
   }
   // 统计
-  const todayCal=data.diets.filter(d=>d.date===todayStr()).reduce((s,d)=>s+d.calories,0);
-  const todayExCal=data.exercises.filter(e=>e.date===todayStr()).reduce((s,e)=>s+e.calories,0);
+  const todayDietItems=data.diets.filter(d=>d.date===todayStr());
+  const todayExerciseItems=data.exercises.filter(e=>e.date===todayStr());
+  const todayCal=todayDietItems.reduce((s,d)=>s+d.calories,0);
+  const todayExCal=todayExerciseItems.reduce((s,e)=>s+e.calories,0);
   const weekFin=data.finances.filter(f=>getLastNDays(7).includes(f.date)&&isExpense(f)).reduce((s,f)=>s+f.amount,0);
   const latestWeight=data.weights.length>0?data.weights[data.weights.length-1].value:0;
   const target=getCalorieTarget();
   document.getElementById('dashboardStats').innerHTML=`
-    <div class="stat-card pink-border"><div class="stat-label">今日热量</div><div class="stat-value ${todayCal>target?'red':'primary'}">${todayCal} <span style="font-size:14px">kcal</span></div><div class="stat-trend">目标 ${target} kcal</div></div>
-    <div class="stat-card"><div class="stat-label">今日运动</div><div class="stat-value green">${todayExCal} <span style="font-size:14px">kcal</span></div></div>
+    <div class="stat-card pink-border"><div class="stat-label">今日饮食</div><div class="stat-value ${todayCal>target?'red':'primary'}">${todayDietItems.length?todayCal+' <span style="font-size:14px">kcal</span>':'未记录'}</div><div class="stat-trend">${todayDietItems.length?'参考 '+target+' kcal':'点击上方快速记录'}</div></div>
+    <div class="stat-card"><div class="stat-label">今日运动</div><div class="stat-value green">${todayExerciseItems.length?todayExCal+' <span style="font-size:14px">kcal</span>':'未记录'}</div></div>
     <div class="stat-card"><div class="stat-label">本周支出</div><div class="stat-value red">¥${weekFin.toFixed(2)}</div></div>
     <div class="stat-card"><div class="stat-label">最新体重</div><div class="stat-value primary">${latestWeight?latestWeight+' kg':'-'}</div></div>`;
   // 体重图
@@ -3006,6 +3017,28 @@ window.addEventListener('online', () => { updateCloudSyncButton(); if (cloudSync
 window.addEventListener('offline', updateCloudSyncButton);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
 
+let appUpdateReloading=false;
+function showAppUpdatePrompt(registration) {
+  if(document.getElementById('appUpdatePrompt'))return;
+  const prompt=document.createElement('div');prompt.id='appUpdatePrompt';
+  prompt.style.cssText='position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:10003;max-width:430px;margin:auto;background:#3d2e27;color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 12px 32px rgba(45,32,27,.28)';
+  prompt.innerHTML='<div style="font-weight:700;margin-bottom:4px">生活台有新版本</div><div style="font-size:13px;opacity:.86;line-height:1.55">点击更新即可使用，不会清除本地记录或云端数据。</div><div style="display:flex;gap:8px;margin-top:10px"><button id="applyAppUpdate" class="btn" style="flex:1;box-shadow:none">立即更新</button><button id="laterAppUpdate" class="btn-sm" style="flex:1">稍后</button></div>';
+  document.body.appendChild(prompt);
+  document.getElementById('laterAppUpdate').onclick=()=>prompt.remove();
+  document.getElementById('applyAppUpdate').onclick=()=>{const worker=registration.waiting;if(!worker){prompt.remove();location.reload();return;}appUpdateReloading=true;worker.postMessage({type:'SKIP_WAITING'});};
+}
+function registerAppServiceWorker() {
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.register('sw.js').then(registration=>{
+    if(registration.waiting&&navigator.serviceWorker.controller)showAppUpdatePrompt(registration);
+    registration.addEventListener('updatefound',()=>{
+      const worker=registration.installing;if(!worker)return;
+      worker.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller)showAppUpdatePrompt(registration);});
+    });
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(appUpdateReloading){appUpdateReloading=false;location.reload();}});
+}
+
 function init() {
   // 设置日期默认值
   document.getElementById('weightDate').value = todayStr();
@@ -3021,7 +3054,7 @@ function init() {
   // 云端同步
   initGitHubSync();
   initCloudSync();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  registerAppServiceWorker();
 }
 
 // 页面加载完成后初始化
