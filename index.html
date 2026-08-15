@@ -845,6 +845,9 @@ function getSyncConfig() { try { return JSON.parse(localStorage.getItem(SYNC_CON
 function setSyncConfig(cfg) { localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg)); }
 // 硬编码默认 Gist ID，确保新设备无需配置就能连接同一个 Gist
 const DEFAULT_GIST_ID = 'ee98bf8035f733dcfe2c31537e070a38';
+// The old Gist flow can merge an outdated snapshot into a device on page load.
+// Keep it paused while email-based cloud sync becomes the single safe source.
+const LEGACY_GIST_SYNC_PAUSED = true;
 function getSyncToken() { return (getSyncConfig().token || '').trim(); }
 function getGistId() { return (getSyncConfig().gistId || DEFAULT_GIST_ID).trim(); }
 function getRepoOwner() { return (getSyncConfig().repoOwner || '').trim(); }
@@ -963,6 +966,7 @@ function mergeData(localData, cloudData, preferCloud) {
 async function pullFromGist() { if (!isGistReady()) return null; setSyncStatus('syncing'); return await gistGet(getSyncToken(), getGistId()); }
 
 async function pushToGist() {
+  if (LEGACY_GIST_SYNC_PAUSED) return false;
   if (!isGistReady()) return false; if (syncState.isSyncing) { syncState.pendingPush = true; return false; }
   syncState.isSyncing = true; setSyncStatus('syncing');
   try {
@@ -977,6 +981,7 @@ async function pushToGist() {
 }
 
 async function fullSync() {
+  if (LEGACY_GIST_SYNC_PAUSED) { setSyncStatus('legacy-paused'); return false; }
   if (!isGistReady()) { showToast('请先配置同步设置'); return; }
   if (syncState.isSyncing) { showToast('正在同步中...'); return; }
   syncState.isSyncing = true; setSyncStatus('syncing');
@@ -998,9 +1003,10 @@ async function fullSync() {
   finally { syncState.isSyncing = false; }
 }
 
-function debouncedPush() { if (!isGistReady()) return; if (!navigator.onLine) { syncState.pendingPush = true; return; } clearTimeout(pushDebounceTimer); pushDebounceTimer = setTimeout(() => pushToGist(), PUSH_DEBOUNCE_MS); }
+function debouncedPush() { if (LEGACY_GIST_SYNC_PAUSED || !isGistReady()) return; if (!navigator.onLine) { syncState.pendingPush = true; return; } clearTimeout(pushDebounceTimer); pushDebounceTimer = setTimeout(() => pushToGist(), PUSH_DEBOUNCE_MS); }
 
 async function initGitHubSync() {
+  if (LEGACY_GIST_SYNC_PAUSED) { setSyncStatus('legacy-paused'); updateSyncBar(); return; }
   try { const saved = JSON.parse(localStorage.getItem(SYNC_STATUS_KEY)); if (saved) syncState.lastSyncTime = saved.lastSyncTime || 0; } catch (e) {}
   if (!isGistReady()) { setSyncStatus('offline'); updateSyncBar(); return; }
   if (!navigator.onLine) { setSyncStatus('offline'); updateSyncBar(); return; }
@@ -1015,24 +1021,25 @@ function updateSyncBar() {
   const bar = document.getElementById('syncStatusBar'); if (!bar) return;
   let icon = '', text = '', color = '';
   switch (syncState.status) {
+    case 'legacy-paused': icon = '⚠'; text = '旧同步已暂停'; color = 'var(--orange)'; break;
     case 'syncing': icon = '⟳'; text = '同步中...'; color = 'var(--blue)'; break;
     case 'idle': if (syncState.lastSyncTime > 0) { const d = new Date(syncState.lastSyncTime); text = '已同步 ' + (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); icon = '✓'; color = 'var(--green)'; } else { icon = '✓'; text = '已就绪'; color = 'var(--green)'; } break;
     case 'error': icon = '⚠'; text = syncState.lastError || '同步错误'; color = 'var(--red)'; break;
     default: if (isGistReady()) { icon = '○'; text = '离线'; color = 'var(--text-muted)'; } else { icon = '○'; text = '未配置'; color = 'var(--text-muted)'; }
   }
   bar.innerHTML = '<span style="color:' + color + ';font-size:0.8em">' + icon + '</span> <span style="font-size:0.75em;color:var(--text-light)">' + text + '</span>';
-  bar.style.cursor = 'pointer'; bar.onclick = () => openSyncSettings();
+  bar.style.cursor = 'pointer'; bar.onclick = () => openCloudSync();
 }
 
 function updateSyncStatusSection() {
   const el = document.getElementById('syncStatusSection'); if (!el) return;
   let st = '', sc = 'var(--text-muted)';
-  switch (syncState.status) { case 'syncing': st = '同步中...'; sc = 'var(--blue)'; break; case 'idle': st = '已连接'; sc = 'var(--green)'; break; case 'error': st = syncState.lastError || '错误'; sc = 'var(--red)'; break; default: st = isGistReady() ? '就绪' : '未配置'; }
+  switch (syncState.status) { case 'legacy-paused': st = '旧版 GitHub 同步已暂停，请使用邮箱云同步'; sc = 'var(--orange)'; break; case 'syncing': st = '同步中...'; sc = 'var(--blue)'; break; case 'idle': st = '已连接'; sc = 'var(--green)'; break; case 'error': st = syncState.lastError || '错误'; sc = 'var(--red)'; break; default: st = isGistReady() ? '就绪' : '未配置'; }
   let lt = ''; if (syncState.lastSyncTime > 0) lt = '<div style="font-size:0.8em;color:var(--text-light);margin-bottom:8px">上次同步: ' + new Date(syncState.lastSyncTime).toLocaleString() + '</div>';
   el.innerHTML = '<div style="margin-bottom:8px"><span style="color:' + sc + ';font-weight:600">● ' + st + '</span></div>' + lt;
 }
 
-function manualSync() { if (!isGistReady()) { showToast('请先配置同步设置'); openSyncSettings(); return; } fullSync(); }
+function manualSync() { if (LEGACY_GIST_SYNC_PAUSED) { showToast('旧版同步已暂停，请使用云同步'); openCloudSync(); return; } if (!isGistReady()) { showToast('请先配置同步设置'); openSyncSettings(); return; } fullSync(); }
 
 function openSyncSettings() {
   const modal = document.getElementById('syncSettingsModal'); if (!modal) return;
