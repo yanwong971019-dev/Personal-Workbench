@@ -67,4 +67,8 @@ test("first cloud upload requires explicit device confirmation", async () => {
   assert.match(html, /!cloudSyncReady/);
   assert.match(html, /openCloudFirstUpload\(\)/);
   assert.match(html, /确认，用本设备建立云端/);
+  assert.match(html, /id="cloudResumeFirstUpload"/);
+  assert.match(html, /继续检查并建立云端备份/);
+  assert.match(html, /getSession\(\)/);
+  assert.match(html, /setTimeout\(\(\) => pullCloudSnapshot\(\), 0\)/);
 });

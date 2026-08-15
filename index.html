@@ -2655,10 +2655,15 @@ function openCloudSync() {
   const signedIn = !!cloudSyncUser;
   const signedInText = cloudSyncReady ? '已登录，此设备正在自动同步。' : '已登录，正在等待确认用哪台设备的数据建立云端记录。';
   const loginForm = '<input id="cloudEmail" type="email" placeholder="你的常用邮箱" autocomplete="email" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:16px"><button id="cloudSignIn" class="btn-primary" style="width:100%;margin-top:12px">发送登录邮件</button><div id="cloudVerifyStep" style="display:block;margin-top:16px;padding-top:16px;border-top:1px solid #eadfd9"><div style="font-size:13px;color:#806f66;line-height:1.65;margin-bottom:10px">已有登录邮件可直接在这里验证：如果邮件里有验证码，请输入验证码；如果只有“Sign in”按钮，请长按按钮复制链接，再回到这里粘贴。QQ 加密链接会先请你确认，再打开 QQ 安全页继续验证。</div><input id="cloudOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="邮件验证码（6–8位）" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:17px;letter-spacing:2px"><input id="cloudMagicLink" type="url" inputmode="url" placeholder="或粘贴邮件登录链接" style="box-sizing:border-box;width:100%;padding:11px;margin-top:9px;border:1px solid #e7d5cc;border-radius:10px;font-size:14px"><button id="cloudVerify" class="btn-primary" style="width:100%;margin-top:12px">验证并登录</button></div>';
-  modal.innerHTML = '<div style="width:min(420px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">☁️ 自动云同步</div><div id="cloudSyncHelp" style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:16px">' + (signedIn ? signedInText : '输入常用邮箱，在当前生活台内完成验证，即可同步手机、iPad 和电脑。') + '</div>' + (signedIn ? '<button id="cloudSignOut" class="btn-sm" style="width:100%">退出此设备</button>' : loginForm) + '<button id="cloudClose" class="btn-sm" style="width:100%;margin-top:10px">关闭</button></div>';
+  const signedInActions = (!cloudSyncReady ? '<button id="cloudResumeFirstUpload" class="btn-primary" style="width:100%;margin-bottom:10px">继续检查并建立云端备份</button>' : '') + '<button id="cloudSignOut" class="btn-sm" style="width:100%">退出此设备</button>';
+  modal.innerHTML = '<div style="width:min(420px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">☁️ 自动云同步</div><div id="cloudSyncHelp" style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:16px">' + (signedIn ? signedInText : '输入常用邮箱，在当前生活台内完成验证，即可同步手机、iPad 和电脑。') + '</div>' + (signedIn ? signedInActions : loginForm) + '<button id="cloudClose" class="btn-sm" style="width:100%;margin-top:10px">关闭</button></div>';
   document.body.appendChild(modal);
   document.getElementById('cloudClose').onclick = () => modal.remove();
-  if (signedIn) document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; cloudSyncReady = false; cloudFirstUploadShown = false; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
+  if (signedIn) {
+    const resumeButton = document.getElementById('cloudResumeFirstUpload');
+    if (resumeButton) resumeButton.onclick = async () => { modal.remove(); cloudFirstUploadShown = false; await pullCloudSnapshot(); };
+    document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; cloudSyncReady = false; cloudFirstUploadShown = false; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
+  }
   else {
     const pendingEmail = localStorage.getItem(CLOUD_PENDING_EMAIL_KEY) || '';
     if (pendingEmail) { document.getElementById('cloudEmail').value = pendingEmail; document.getElementById('cloudVerifyStep').style.display = 'block'; }
@@ -2700,7 +2705,10 @@ function openCloudSync() {
       if (error && verifyFallback) ({ error } = await supabaseClient.auth.verifyOtp(verifyFallback));
       verifyButton.disabled = false; verifyButton.textContent = '验证并登录';
       if (error) { showToast('验证失败，请检查邮件内容后重试'); return; }
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      cloudSyncUser = session?.user || cloudSyncUser; cloudSyncReady = false; cloudFirstUploadShown = false; updateCloudSyncButton();
       localStorage.removeItem(CLOUD_PENDING_EMAIL_KEY); modal.remove(); showToast('登录成功，请确认本设备数据');
+      if (cloudSyncUser) setTimeout(() => pullCloudSnapshot(), 0);
     };
   }
 }
@@ -2753,7 +2761,7 @@ async function initCloudSync() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   cloudSyncUser = session?.user || null; cloudSyncReady = false; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot();
   else if (!localStorage.getItem('cloud_sync_prompt_seen')) { localStorage.setItem('cloud_sync_prompt_seen', '1'); setTimeout(openCloudSync, 700); }
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot(); });
+  supabaseClient.auth.onAuthStateChange((_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; updateCloudSyncButton(); if (cloudSyncUser) setTimeout(() => pullCloudSnapshot(), 0); });
 }
 const saveDataBeforeCloudSync = saveData;
 saveData = function() { saveDataBeforeCloudSync(); queueCloudSnapshot(); };
