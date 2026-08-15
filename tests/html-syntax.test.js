@@ -16,6 +16,7 @@ test("mobile cloud login supports in-app verification", async () => {
   assert.match(html, /id="cloudOtp"/);
   assert.match(html, /id="cloudMagicLink"/);
   assert.match(html, /supabaseClient\.auth\.verifyOtp\(verifyArgs\)/);
+  assert.match(html, /发送次数已达上限，请查看已收到的邮件/);
 });
 
 test("first cloud upload requires explicit device confirmation", async () => {

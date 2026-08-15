@@ -2596,11 +2596,16 @@ function openCloudSync() {
       const email = document.getElementById('cloudEmail').value.trim();
       if (!email) { showToast('请输入邮箱'); return; }
       const sendButton = document.getElementById('cloudSignIn'); sendButton.disabled = true; sendButton.textContent = '正在发送…';
-      const { error } = await supabaseClient.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
-      sendButton.disabled = false; sendButton.textContent = '重新发送登录邮件';
-      if (error) { showToast('邮件发送失败：' + error.message); return; }
       localStorage.setItem(CLOUD_PENDING_EMAIL_KEY, email);
       document.getElementById('cloudVerifyStep').style.display = 'block';
+      const { error } = await supabaseClient.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+      sendButton.disabled = false; sendButton.textContent = '重新发送登录邮件';
+      if (error) {
+        const rateLimited = /rate limit/i.test(error.message || '');
+        document.getElementById('cloudSyncHelp').textContent = rateLimited ? '发送次数已达上限。请使用已经收到的邮件完成验证，或约1小时后再发送。' : '邮件暂时发送失败，但仍可使用之前收到的邮件完成验证。';
+        showToast(rateLimited ? '发送次数已达上限，请查看已收到的邮件' : '邮件发送失败，请稍后重试');
+        return;
+      }
       document.getElementById('cloudSyncHelp').textContent = '邮件已发送。请留在主屏幕生活台内完成下面的验证。';
       showToast('登录邮件已发送');
     };
