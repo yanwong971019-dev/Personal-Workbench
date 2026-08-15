@@ -83,3 +83,30 @@ test("cloud sync checks for updates while a device remains open", async () => {
   assert.match(html, /cloudHasLocalChanges/);
   assert.match(html, /正在读取云端备份/);
 });
+
+test("cloud sync carries deletion markers across devices", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const recordSyncKey = extractNamedFunction(html, "recordSyncKey");
+  const mergeData = extractNamedFunction(html, "mergeData");
+  const merge = new Function("MERGEABLE_ARRAYS", `${recordSyncKey}; ${mergeData}; return mergeData;`)(["finances"]);
+  const deleted = merge(
+    { finances: [{ id: 1, _id: "finance_1", _updatedAt: 10 }], _deletedItems: {} },
+    { finances: [], _deletedItems: { finance_1: 20 } },
+    false,
+  );
+  assert.deepEqual(deleted.finances, []);
+  const recreated = merge(
+    { finances: [], _deletedItems: { finance_1: 20 } },
+    { finances: [{ id: 1, _id: "finance_1", _updatedAt: 30 }], _deletedItems: {} },
+    false,
+  );
+  assert.equal(recreated.finances.length, 1);
+});
+
+test("edits keep their record identity for cross-device sync", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /const existing=data\.weights\.find\(w=>w\.date===date\)/);
+  assert.match(html, /existing\._updatedAt=Date\.now\(\)/);
+  assert.match(html, /f\._updatedAt = Date\.now\(\)/);
+  assert.match(html, /data\._updatedAt = Date\.now\(\)/);
+});
