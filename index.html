@@ -7,10 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="工作台">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>个人生活工作台 v2024.08.04</title>
+<title>个人生活工作台 v2026.08.15</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -300,7 +297,7 @@ tr:hover { background:var(--primary-bg); }
   <main class="main">
     <!-- 仪表盘 -->
     <div class="page active" id="page-dashboard">
-      <div id="dashGreeting" style="background:var(--primary-gradient);color:#fff;border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-lg)"><span style="position:absolute;top:4px;right:8px;font-size:10px;opacity:0.6">v2024.08.04</span></div>
+      <div id="dashGreeting" style="background:var(--primary-gradient);color:#fff;border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-lg)"><span style="position:absolute;top:4px;right:8px;font-size:10px;opacity:0.6">v2026.08.15</span></div>
       <div id="dashPregnancyBanner"></div>
       <div class="stats-grid" id="dashboardStats"></div>
       <div class="two-col">
@@ -608,6 +605,7 @@ tr:hover { background:var(--primary-bg); }
 </nav>
 <!-- 移动端更多菜单 -->
 <div id="mobileMoreMenu" style="display:none;position:fixed;bottom:70px;left:16px;right:16px;background:var(--card);border-radius:16px;padding:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);z-index:101;border:1px solid var(--border);" onclick="event.stopPropagation()">
+  <div id="mobileCloudSyncStatus" style="font-size:12px;color:var(--green);text-align:center;margin:0 0 8px">登录同步后可跨设备自动更新</div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;font-size:12px;">
     <div style="padding:8px 4px;border-radius:12px;" onclick="manualSync();closeMobileMore()">
       <div style="font-size:22px;margin-bottom:4px">🔄</div>
@@ -730,6 +728,7 @@ let data = loadData();
 let charts = {};
 let dietPhotoData = null;
 let finPhotoData = null;
+const IMPORT_RECOVERY_KEY = 'life_workbench_last_import_recovery';
 
 function loadData() {
   try {
@@ -750,6 +749,12 @@ function loadData() {
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function todayStr() { const d=new Date(); const tz=d.getTimezoneOffset()*60000; return new Date(d-tz).toISOString().slice(0,10); }
 function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+function downloadJsonSnapshot(snapshot, filename) {
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 function getLastNDays(n) { const days=[]; for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const tz=d.getTimezoneOffset()*60000;days.push(new Date(d-tz).toISOString().slice(0,10));} return days; }
 
 // 孕期计算（用纯日期差，避免 ceil 导致多算一天）
@@ -824,6 +829,17 @@ function setAIServerUrl(url) { localStorage.setItem(AI_CONFIG_KEY, url); }
 function getAIToken() { return localStorage.getItem(AI_TOKEN_KEY) || ''; }
 function setAIToken(token) { localStorage.setItem(AI_TOKEN_KEY, token); }
 function isAIConfigured() { return getAIServerUrl() && getAIToken(); }
+function aiErrorMessage(error, status) {
+  if (error?.name === 'AbortError') return '识别超时（60秒），可换一张更清晰或更小的图片后重试';
+  if (status === 401) return 'AI 访问密码不正确，请在“更多 → AI”检查设置';
+  if (status === 413) return '图片过大，请重新拍摄或裁剪后再试';
+  if (status === 429) return 'AI 服务暂时繁忙，请稍后重试';
+  if (error?.message === 'Load failed' || error?.message === 'Failed to fetch') return '网络或 AI 服务连接失败，请检查网络和 AI 服务地址';
+  return error?.message || 'AI 服务暂时不可用';
+}
+function showAIRequestFailure(resultEl, error) {
+  resultEl.textContent = '❌ ' + aiErrorMessage(error, error?.status) + '；你仍可手动填写。';
+}
 
 // ============================================================
 // ========== GitHub Gist + Private Repo 云端同步 ===============
@@ -1271,10 +1287,13 @@ async function aiRecognizeDiet() {
   const resultEl = document.getElementById('dietAIResult');
   btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
     const resp = await fetch(serverUrl + '/api/recognize', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getAIToken() },
-      body: JSON.stringify({ image: dietPhotoData, type: 'diet' })
+      body: JSON.stringify({ image: dietPhotoData, type: 'diet' }), signal: controller.signal
     });
+    clearTimeout(timeoutId);
     const result = await resp.json().catch(() => ({ error: 'AI服务器返回了无法解析的内容' }));
     if (!resp.ok) { resultEl.textContent = '❌ ' + (result.error || `服务器返回错误 ${resp.status}`); return; }
     if (result.error) { resultEl.textContent = '❌ ' + result.error; return; }
@@ -1298,7 +1317,7 @@ async function aiRecognizeDiet() {
       resultEl.textContent = '⚠️ 未识别到食物，请手动填写';
     }
   } catch (err) {
-    resultEl.textContent = '❌ 请求失败: ' + err.message;
+    showAIRequestFailure(resultEl, err);
   } finally {
     btn.disabled = false; btn.textContent = '🤖 AI识别';
   }
@@ -1315,7 +1334,7 @@ async function aiRecognizeFinance() {
   const resultEl = document.getElementById('finAIResult');
   btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
   try {
-    resultEl.textContent = '正在连接 ' + serverUrl + ' ...';
+    resultEl.textContent = '正在识别图片，请稍候…';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时（AI识别图片可能需要较长时间）
     const resp = await fetch(serverUrl + '/api/recognize', {
@@ -1367,10 +1386,10 @@ async function aiRecognizeFinance() {
       resultEl.textContent = '⚠️ 未识别到内容，请手动填写';
     }
   } catch (err) {
-    let errMsg = err.message;
+    let errMsg = aiErrorMessage(err, err?.status);
     if (err.name === 'AbortError') errMsg = '请求超时（60秒），服务器可能未响应或图片太大';
     else if (err.message === 'Load failed') errMsg = '网络连接失败，请检查AI服务器地址是否正确、服务器是否在线';
-    resultEl.textContent = '❌ 请求失败: ' + errMsg + '；请检查 AI 服务地址、访问密码和网络连接';
+    resultEl.textContent = '❌ ' + errMsg + '；你仍可手动填写。';
   } finally {
     btn.disabled = false; btn.textContent = '🤖 AI识别';
   }
@@ -2527,32 +2546,45 @@ function renderDashboard() {
 
 // ========== 导入导出 ==========
 function exportData() {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `life_workbench_${todayStr()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadJsonSnapshot(data, `life_workbench_${todayStr()}.json`);
   showToast('数据已导出');
 }
 
+function importSummary(imported) {
+  return ['weights','diets','finances','exercises','checkups','postpartums']
+    .map(key => `${({ weights:'体重', diets:'饮食', finances:'账目', exercises:'运动', checkups:'产检', postpartums:'产后' })[key]} ${(imported[key] || []).length} 条`).join('　');
+}
+function normalizeImportedData(imported) {
+  if (!imported || typeof imported !== 'object' || !Array.isArray(imported.weights) || !Array.isArray(imported.diets)) throw new Error('文件不是生活台导出的数据');
+  ['finances','exercises','checkups','postpartums'].forEach(key => { if (!Array.isArray(imported[key])) imported[key] = []; });
+  if (!imported.budget || typeof imported.budget !== 'object') imported.budget = {};
+  if (imported.prePregWeight === undefined) imported.prePregWeight = null;
+  ensureTimestamps(imported);
+  return imported;
+}
+function showImportConfirmation(imported, fileName) {
+  document.getElementById('importConfirmModal')?.remove();
+  const modal = document.createElement('div'); modal.id = 'importConfirmModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(45,32,27,.46);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = '<div style="width:min(430px,100%);background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">导入前确认</div><div style="font-size:14px;color:#806f66;line-height:1.7">文件：<b>' + escapeHtml(fileName || '未命名文件') + '</b><br>' + importSummary(imported) + '</div><div style="margin:14px 0;padding:12px;border-radius:12px;background:#f7eee8;font-size:13px;line-height:1.65">导入会替换这台设备的数据，并在联网后同步到云端。确认前会自动下载当前数据备份；如导错可立刻再导入该备份恢复。</div><button id="confirmImportButton" class="btn-primary" style="width:100%">确认导入，并先备份当前数据</button><button id="cancelImportButton" class="btn-sm" style="width:100%;margin-top:10px">取消</button></div>';
+  document.body.appendChild(modal);
+  document.getElementById('cancelImportButton').onclick = () => modal.remove();
+  document.getElementById('confirmImportButton').onclick = () => {
+    const backup = JSON.parse(JSON.stringify(data));
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    try { localStorage.setItem(IMPORT_RECOVERY_KEY, JSON.stringify({ createdAt: Date.now(), data: backup })); } catch (e) {}
+    downloadJsonSnapshot(backup, `life_workbench_before_import_${stamp}.json`);
+    data = imported; saveData(); renderAll(); modal.remove(); showToast('导入完成；原数据备份已下载');
+  };
+}
 function importData(event) {
   const file = event.target.files[0];
+  event.target.value = '';
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const imported = JSON.parse(e.target.result);
-      if (!imported.weights || !imported.diets) { showToast('文件格式不正确'); return; }
-      if (!imported.checkups) imported.checkups = [];
-      if (!imported.postpartums) imported.postpartums = [];
-      if (!imported.budget) imported.budget = {};
-      if (imported.prePregWeight === undefined) imported.prePregWeight = null;
-      data = imported;
-      saveData();
-      renderAll();
-      showToast('数据导入成功');
+      showImportConfirmation(normalizeImportedData(JSON.parse(e.target.result)), file.name);
     } catch (err) {
       showToast('导入失败：' + err.message);
     }
@@ -2587,14 +2619,27 @@ let cloudHasLocalChanges = false;
 let cloudSyncReady = false;
 let cloudFirstUploadShown = false;
 const CLOUD_PENDING_EMAIL_KEY = 'cloud_sync_pending_email';
+const CLOUD_SYNC_STATUS_KEY = 'cloud_sync_status_v2';
 const CLOUD_PULL_INTERVAL_MS = 12000;
 const CLOUD_READ_TIMEOUT_MS = 8000;
 
 function cloudSyncButton() { return document.getElementById('cloudSyncButton'); }
+function getCloudSyncStatus() { try { return JSON.parse(localStorage.getItem(CLOUD_SYNC_STATUS_KEY)) || {}; } catch (e) { return {}; } }
+function formatCloudSyncTime(time) { if (!time) return ''; const d = new Date(time); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function saveCloudSyncStatus(status) { try { localStorage.setItem(CLOUD_SYNC_STATUS_KEY, JSON.stringify({ ...getCloudSyncStatus(), ...status })); } catch (e) {} }
+function cloudSyncLabel() {
+  if (!cloudSyncUser) return '☁️ 登录同步';
+  if (!navigator.onLine) return cloudHasLocalChanges ? '☁️ 离线，待上传' : '☁️ 当前离线';
+  if (!cloudSyncReady) return '☁️ 已登录待确认';
+  if (cloudHasLocalChanges) return '☁️ 正在上传…';
+  const lastSyncedAt = getCloudSyncStatus().lastSyncedAt;
+  return lastSyncedAt ? '☁️ 已同步 ' + formatCloudSyncTime(lastSyncedAt) : '☁️ 已自动同步';
+}
 function updateCloudSyncButton() {
   const button = cloudSyncButton(); if (!button) return;
-  button.textContent = cloudSyncUser ? (cloudSyncReady ? '☁️ 已自动同步' : '☁️ 已登录待确认') : '☁️ 登录同步';
+  button.textContent = cloudSyncLabel();
   button.style.color = cloudSyncUser ? 'var(--green)' : '';
+  const mobileStatus = document.getElementById('mobileCloudSyncStatus'); if (mobileStatus) mobileStatus.textContent = cloudSyncLabel().replace('☁️ ', '');
 }
 function parseCloudEmailLoginLink(rawLink) {
   const expectedHost = new URL(SUPABASE_URL).hostname;
@@ -2744,7 +2789,7 @@ async function pushCloudSnapshot() {
   const payloadAtStart = JSON.stringify(data);
   const { error } = await supabaseClient.from(SUPABASE_SYNC_TABLE).upsert({ user_id: cloudSyncUser.id, payload: data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) { console.warn('云同步保存失败：', error.message); return false; }
-  if (payloadAtStart === JSON.stringify(data)) cloudHasLocalChanges = false;
+  if (payloadAtStart === JSON.stringify(data)) { cloudHasLocalChanges = false; saveCloudSyncStatus({ lastSyncedAt: Date.now(), lastError: '' }); updateCloudSyncButton(); }
   return true;
 }
 function queueCloudSnapshot() { clearTimeout(cloudSyncTimer); cloudSyncTimer = setTimeout(pushCloudSnapshot, 1200); }
@@ -2786,7 +2831,7 @@ async function pullCloudSnapshot(options = {}) {
   ]);
   if (error) { console.warn('云同步读取失败：', error.message); if (!quiet) showToast('云同步读取失败'); return false; }
   if (row && row.payload) {
-    cloudSyncReady = true; cloudFirstUploadShown = false;
+    cloudSyncReady = true; cloudFirstUploadShown = false; saveCloudSyncStatus({ lastSyncedAt: Date.now(), lastError: '' });
     const shouldPublishMergedSnapshot = cloudHasLocalChanges;
     const localEmpty = !data || (!data.weights?.length && !data.diets?.length && !data.finances?.length && !data.exercises?.length);
     data = mergeData(data, row.payload, localEmpty); ensureTimestamps(data); localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); renderAll();
@@ -2810,8 +2855,9 @@ async function initCloudSync() {
   supabaseClient.auth.onAuthStateChange((_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; if (!cloudSyncUser) { clearInterval(cloudPullTimer); cloudPullTimer = null; } updateCloudSyncButton(); if (cloudSyncUser) setTimeout(() => pullCloudSnapshot(), 0); });
 }
 const saveDataBeforeCloudSync = saveData;
-saveData = function() { data._updatedAt = Date.now(); cloudHasLocalChanges = true; saveDataBeforeCloudSync(); queueCloudSnapshot(); };
-window.addEventListener('online', () => { if (cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
+saveData = function() { data._updatedAt = Date.now(); cloudHasLocalChanges = true; saveDataBeforeCloudSync(); updateCloudSyncButton(); queueCloudSnapshot(); };
+window.addEventListener('online', () => { updateCloudSyncButton(); if (cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
+window.addEventListener('offline', updateCloudSyncButton);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
 
 function init() {
@@ -2832,6 +2878,7 @@ function init() {
   // 云端同步
   initGitHubSync();
   initCloudSync();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 // 页面加载完成后初始化
