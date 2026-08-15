@@ -5,10 +5,11 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ]);
+const VERCEL_WORKBENCH_ORIGIN = /^https:\/\/personal-workbench(?:-[a-z0-9-]+)?\.vercel\.app$/;
 
 export function applyCors(req, res) {
   const origin = req.headers.origin;
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
+  if (origin && (ALLOWED_ORIGINS.has(origin) || VERCEL_WORKBENCH_ORIGIN.test(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
   }
