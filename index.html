@@ -1475,6 +1475,24 @@ document.addEventListener('input', (e) => {
 
 // AI 设置弹窗
 function showAISettings() {
+  document.getElementById('aiSettingsModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'aiSettingsModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(45,32,27,.42);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = '<div style="width:min(430px,100%);background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">AI 图片识别设置</div><div style="font-size:13px;color:#806f66;line-height:1.6;margin-bottom:16px">服务地址会自动填入当前生活台。访问密码只保存在这台设备上。</div><label style="display:block;font-size:14px;margin:12px 0 6px">AI 服务地址</label><input id="aiSettingsUrl" type="url" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:14px"><label style="display:block;font-size:14px;margin:14px 0 6px">AI 访问密码</label><input id="aiSettingsToken" type="password" autocomplete="off" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:14px"><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px"><button id="aiSettingsCancel" class="btn-sm">取消</button><button id="aiSettingsSave" class="btn-primary">保存</button></div></div>';
+  document.body.appendChild(modal);
+  const suggestedUrl = getAIServerUrl() || (location.hostname.endsWith('.vercel.app') ? location.origin : '');
+  document.getElementById('aiSettingsUrl').value = suggestedUrl;
+  document.getElementById('aiSettingsToken').value = getAIToken();
+  document.getElementById('aiSettingsCancel').onclick = () => modal.remove();
+  document.getElementById('aiSettingsSave').onclick = () => {
+    const url = document.getElementById('aiSettingsUrl').value.trim().replace(/\/$/, '');
+    const token = document.getElementById('aiSettingsToken').value.trim();
+    if (!url || !token) { showToast('请填写服务地址和访问密码'); return; }
+    setAIServerUrl(url); setAIToken(token); modal.remove();
+    showToast('AI 服务已配置'); location.reload();
+  };
+  return;
   const currentUrl = getAIServerUrl();
   const currentToken = getAIToken();
   const url = prompt('请输入AI服务地址（Vercel后端URL）：\n\n例如: https://your-app.vercel.app\n\n部署好AI后端后填入此处', currentUrl);
