@@ -947,14 +947,25 @@ function serializeForGist(dataObj) {
 function ensureTimestamps(dataObj) {
   const now = Date.now();
   MERGEABLE_ARRAYS.forEach(key => { if (dataObj[key] && Array.isArray(dataObj[key])) { dataObj[key].forEach(item => { if (!item._updatedAt) item._updatedAt = now; if (!item._id) item._id = key + '_' + (item.id || Date.now()) + '_' + Math.random().toString(36).substr(2, 6); }); } });
+  if (!dataObj._deletedItems) dataObj._deletedItems = {};
   if (!dataObj._updatedAt) dataObj._updatedAt = now; return dataObj;
+}
+
+function recordSyncKey(key, item) { return item?._id || (key + '_' + item?.id); }
+function markDeletedForCloud(key, item) {
+  if (!item) return;
+  ensureTimestamps(data);
+  data._deletedItems[recordSyncKey(key, item)] = Date.now();
 }
 
 function mergeData(localData, cloudData, preferCloud) {
   if (!cloudData || typeof cloudData !== 'object') return localData;
   if (!localData || typeof localData !== 'object') return cloudData;
   const merged = JSON.parse(JSON.stringify(localData));
-  MERGEABLE_ARRAYS.forEach(key => { const localArr = localData[key] || [], cloudArr = cloudData[key] || [], map = {}; localArr.forEach(item => { map[item._id || (key + '_' + item.id)] = item; }); cloudArr.forEach(item => { const id = item._id || (key + '_' + item.id); const ex = map[id]; if (!ex) map[id] = item; else { if ((item._updatedAt || 0) > (ex._updatedAt || 0)) map[id] = item; } }); merged[key] = Object.keys(map).map(k => map[k]); });
+  const tombstones = { ...(localData._deletedItems || {}) };
+  Object.entries(cloudData._deletedItems || {}).forEach(([key, deletedAt]) => { tombstones[key] = Math.max(tombstones[key] || 0, deletedAt || 0); });
+  MERGEABLE_ARRAYS.forEach(key => { const localArr = localData[key] || [], cloudArr = cloudData[key] || [], map = {}; localArr.forEach(item => { map[recordSyncKey(key, item)] = item; }); cloudArr.forEach(item => { const id = recordSyncKey(key, item); const ex = map[id]; if (!ex) map[id] = item; else { if ((item._updatedAt || 0) > (ex._updatedAt || 0)) map[id] = item; } }); merged[key] = Object.entries(map).filter(([id, item]) => (tombstones[id] || 0) < (item._updatedAt || 0)).map(([, item]) => item); });
+  merged._deletedItems = tombstones;
   const lt = localData._updatedAt || 0, ct = cloudData._updatedAt || 0;
   if (cloudData.budget) { if (!merged.budget) merged.budget = {}; Object.keys(cloudData.budget).forEach(bk => { const cb = cloudData.budget[bk], lb = merged.budget[bk]; if (!lb) merged.budget[bk] = cb; else { if ((cb._updatedAt || 0) > (lb._updatedAt || 0)) merged.budget[bk] = cb; } }); }
   if (cloudData.height !== undefined && (ct > lt || preferCloud)) merged.height = cloudData.height;
@@ -1639,7 +1650,7 @@ function addCheckup() {
   document.getElementById('cuItems').value='';document.getElementById('cuResult').value='';document.getElementById('cuNote').value='';
   showToast('产检记录已添加'); renderPregnancy();
 }
-function deleteCheckup(id){data.checkups=data.checkups.filter(c=>c.id!==id);saveData();renderPregnancy();}
+function deleteCheckup(id){const item=data.checkups.find(c=>c.id===id);markDeletedForCloud('checkups',item);data.checkups=data.checkups.filter(c=>c.id!==id);saveData();renderPregnancy();}
 function addPostpartum() {
   const date=document.getElementById('ppDate').value;
   const lochia=document.getElementById('ppLochia').value;
@@ -1657,7 +1668,7 @@ function addPostpartum() {
   ['ppLochia','ppWound','ppFeeding','ppFeedQty','ppMood','ppSleep','ppNote'].forEach(id=>document.getElementById(id).value='');
   showToast('产后记录已添加'); renderPregnancy();
 }
-function deletePostpartum(id){data.postpartums=data.postpartums.filter(p=>p.id!==id);saveData();renderPregnancy();}
+function deletePostpartum(id){const item=data.postpartums.find(p=>p.id===id);markDeletedForCloud('postpartums',item);data.postpartums=data.postpartums.filter(p=>p.id!==id);saveData();renderPregnancy();}
 function renderPregnancy() {
   const info=getPregnancyInfo();
   const banner=document.getElementById('pregBanner');
@@ -1694,13 +1705,14 @@ function addWeight() {
   const height=parseFloat(document.getElementById('heightValue').value);
   if(!date||!value){showToast('请填写日期和体重');return;}
   if(height)data.height=height;
-  data.weights=data.weights.filter(w=>w.date!==date);
-  data.weights.push({date,value,height:data.height});
+  const existing=data.weights.find(w=>w.date===date);
+  if(existing){existing.value=value;existing.height=data.height;existing._updatedAt=Date.now();}
+  else data.weights.push({date,value,height:data.height});
   data.weights.sort((a,b)=>a.date.localeCompare(b.date));
   saveData();document.getElementById('weightValue').value='';
   showToast('体重记录已添加');renderWeight();
 }
-function deleteWeight(date){data.weights=data.weights.filter(w=>w.date!==date);saveData();renderWeight();}
+function deleteWeight(date){const item=data.weights.find(w=>w.date===date);markDeletedForCloud('weights',item);data.weights=data.weights.filter(w=>w.date!==date);saveData();renderWeight();}
 function updatePrePregWeight(){
   const val=parseFloat(document.getElementById('prePregWeightValue').value);
   if(!isNaN(val)&&val>0){data.prePregWeight=val;saveData();renderWeight();showToast('孕前体重已更新');}
@@ -1746,7 +1758,7 @@ function addDiet() {
   clearDietPhoto();
   showToast('饮食记录已添加'); renderDiet();
 }
-function deleteDiet(id){data.diets=data.diets.filter(d=>d.id!==id);saveData();renderDiet();}
+function deleteDiet(id){const item=data.diets.find(d=>d.id===id);markDeletedForCloud('diets',item);data.diets=data.diets.filter(d=>d.id!==id);saveData();renderDiet();}
 function renderDiet() {
   const today=document.getElementById('dietDate').value||todayStr();
   const todayItems=data.diets.filter(d=>d.date===today);
@@ -2026,7 +2038,7 @@ function addFinance() {
   clearFinPhoto();
   showToast('支出已添加'); renderFinance();
 }
-function deleteFinance(id){data.finances=data.finances.filter(f=>f.id!==id);saveData();renderFinance();}
+function deleteFinance(id){const item=data.finances.find(f=>f.id===id);markDeletedForCloud('finances',item);data.finances=data.finances.filter(f=>f.id!==id);saveData();renderFinance();}
 
 // 编辑账目
 let finEditId = null;
@@ -2056,6 +2068,7 @@ function saveFinEdit() {
   f.qty = document.getElementById('finEditQty').value.trim();
   f.note = document.getElementById('finEditNote').value.trim();
   f.category = document.getElementById('finEditCat').value;
+  f._updatedAt = Date.now();
   saveData(); renderFinance(); closeFinEdit();
   showToast('已保存');
 }
@@ -2446,7 +2459,7 @@ function addExercise() {
   document.getElementById('exDuration').value='';document.getElementById('exCalories').value='';document.getElementById('exNote').value='';
   showToast('运动记录已添加'); renderExercise();
 }
-function deleteExercise(id){data.exercises=data.exercises.filter(e=>e.id!==id);saveData();renderExercise();}
+function deleteExercise(id){const item=data.exercises.find(e=>e.id===id);markDeletedForCloud('exercises',item);data.exercises=data.exercises.filter(e=>e.id!==id);saveData();renderExercise();}
 function renderExercise() {
   const todayItems=data.exercises.filter(e=>e.date===todayStr());
   const weekItems=data.exercises.filter(e=>getLastNDays(7).includes(e.date));
@@ -2797,7 +2810,7 @@ async function initCloudSync() {
   supabaseClient.auth.onAuthStateChange((_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; if (!cloudSyncUser) { clearInterval(cloudPullTimer); cloudPullTimer = null; } updateCloudSyncButton(); if (cloudSyncUser) setTimeout(() => pullCloudSnapshot(), 0); });
 }
 const saveDataBeforeCloudSync = saveData;
-saveData = function() { cloudHasLocalChanges = true; saveDataBeforeCloudSync(); queueCloudSnapshot(); };
+saveData = function() { data._updatedAt = Date.now(); cloudHasLocalChanges = true; saveDataBeforeCloudSync(); queueCloudSnapshot(); };
 window.addEventListener('online', () => { if (cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
 
