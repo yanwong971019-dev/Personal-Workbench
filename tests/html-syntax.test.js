@@ -110,3 +110,33 @@ test("edits keep their record identity for cross-device sync", async () => {
   assert.match(html, /f\._updatedAt = Date\.now\(\)/);
   assert.match(html, /data\._updatedAt = Date\.now\(\)/);
 });
+
+test("PWA provides standalone launch and an offline shell", async () => {
+  const [html, manifest, worker] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../manifest.json", import.meta.url), "utf8"),
+    readFile(new URL("../sw.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(html, /navigator\.serviceWorker\.register\('sw\.js'\)/);
+  assert.equal(JSON.parse(manifest).display, "standalone");
+  assert.match(manifest, /favicon-512\.png/);
+  assert.match(worker, /life-workbench-shell/);
+  assert.match(worker, /request\.mode === 'navigate'/);
+});
+
+test("imports require confirmation and preserve a downloadable recovery backup", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /function showImportConfirmation\(imported, fileName\)/);
+  assert.match(html, /life_workbench_before_import_/);
+  assert.match(html, /IMPORT_RECOVERY_KEY/);
+  assert.match(html, /确认导入，并先备份当前数据/);
+  assert.match(html, /normalizeImportedData\(JSON\.parse\(e\.target\.result\)\)/);
+});
+
+test("AI recognition has a timeout and specific recovery message", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /function aiErrorMessage\(error, status\)/);
+  assert.match(html, /setTimeout\(\(\) => controller\.abort\(\), 60000\)/);
+  assert.match(html, /showAIRequestFailure\(resultEl, err\)/);
+  assert.match(html, /正在识别图片，请稍候/);
+});
