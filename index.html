@@ -2568,9 +2568,13 @@ const SUPABASE_SYNC_TABLE = 'life_workbench_snapshots';
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
 let cloudSyncUser = null;
 let cloudSyncTimer = null;
+let cloudPullTimer = null;
+let cloudPullInFlight = false;
+let cloudHasLocalChanges = false;
 let cloudSyncReady = false;
 let cloudFirstUploadShown = false;
 const CLOUD_PENDING_EMAIL_KEY = 'cloud_sync_pending_email';
+const CLOUD_PULL_INTERVAL_MS = 12000;
 
 function cloudSyncButton() { return document.getElementById('cloudSyncButton'); }
 function updateCloudSyncButton() {
@@ -2662,7 +2666,7 @@ function openCloudSync() {
   if (signedIn) {
     const resumeButton = document.getElementById('cloudResumeFirstUpload');
     if (resumeButton) resumeButton.onclick = async () => { modal.remove(); cloudFirstUploadShown = false; await pullCloudSnapshot(); };
-    document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; cloudSyncReady = false; cloudFirstUploadShown = false; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
+    document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; cloudSyncReady = false; cloudFirstUploadShown = false; clearInterval(cloudPullTimer); cloudPullTimer = null; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
   }
   else {
     const pendingEmail = localStorage.getItem(CLOUD_PENDING_EMAIL_KEY) || '';
@@ -2715,8 +2719,10 @@ function openCloudSync() {
 async function pushCloudSnapshot() {
   if (!supabaseClient || !cloudSyncUser || !cloudSyncReady || !navigator.onLine) return false;
   ensureTimestamps(data);
+  const payloadAtStart = JSON.stringify(data);
   const { error } = await supabaseClient.from(SUPABASE_SYNC_TABLE).upsert({ user_id: cloudSyncUser.id, payload: data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) { console.warn('云同步保存失败：', error.message); return false; }
+  if (payloadAtStart === JSON.stringify(data)) cloudHasLocalChanges = false;
   return true;
 }
 function queueCloudSnapshot() { clearTimeout(cloudSyncTimer); cloudSyncTimer = setTimeout(pushCloudSnapshot, 1200); }
@@ -2737,22 +2743,36 @@ function openCloudFirstUpload() {
     cloudSyncReady = true;
     const success = await pushCloudSnapshot();
     if (!success) { cloudSyncReady = false; cloudFirstUploadShown = false; button.disabled = false; button.textContent = '重试建立云端'; showToast('云端备份失败，请稍后重试'); return; }
-    modal.remove(); cloudFirstUploadShown = false; updateCloudSyncButton(); showToast('云端备份已建立');
+    startCloudPolling(); modal.remove(); cloudFirstUploadShown = false; updateCloudSyncButton(); showToast('云端备份已建立');
   };
 }
-async function pullCloudSnapshot() {
-  if (!supabaseClient || !cloudSyncUser) return;
+function startCloudPolling() {
+  clearInterval(cloudPullTimer);
+  cloudPullTimer = setInterval(() => {
+    if (!document.hidden && navigator.onLine && cloudSyncUser && cloudSyncReady) pullCloudSnapshot({ quiet: true });
+  }, CLOUD_PULL_INTERVAL_MS);
+}
+async function pullCloudSnapshot(options = {}) {
+  const quiet = !!options.quiet;
+  if (!supabaseClient || !cloudSyncUser || cloudPullInFlight) return false;
+  cloudPullInFlight = true;
+  try {
   const { data: row, error } = await supabaseClient.from(SUPABASE_SYNC_TABLE).select('payload').eq('user_id', cloudSyncUser.id).maybeSingle();
-  if (error) { console.warn('云同步读取失败：', error.message); showToast('云同步读取失败'); return; }
+  if (error) { console.warn('云同步读取失败：', error.message); if (!quiet) showToast('云同步读取失败'); return false; }
   if (row && row.payload) {
     cloudSyncReady = true; cloudFirstUploadShown = false;
+    const shouldPublishMergedSnapshot = cloudHasLocalChanges;
     const localEmpty = !data || (!data.weights?.length && !data.diets?.length && !data.finances?.length && !data.exercises?.length);
     data = mergeData(data, row.payload, localEmpty); ensureTimestamps(data); localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); renderAll();
     updateCloudSyncButton();
-    await pushCloudSnapshot();
+    startCloudPolling();
+    if (shouldPublishMergedSnapshot) await pushCloudSnapshot();
+    return true;
   } else {
     cloudSyncReady = false; updateCloudSyncButton(); openCloudFirstUpload();
   }
+  return true;
+  } finally { cloudPullInFlight = false; }
 }
 async function initCloudSync() {
   if (!supabaseClient) return;
@@ -2761,12 +2781,12 @@ async function initCloudSync() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   cloudSyncUser = session?.user || null; cloudSyncReady = false; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot();
   else if (!localStorage.getItem('cloud_sync_prompt_seen')) { localStorage.setItem('cloud_sync_prompt_seen', '1'); setTimeout(openCloudSync, 700); }
-  supabaseClient.auth.onAuthStateChange((_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; updateCloudSyncButton(); if (cloudSyncUser) setTimeout(() => pullCloudSnapshot(), 0); });
+  supabaseClient.auth.onAuthStateChange((_event, session) => { const nextUser = session?.user || null; if (nextUser?.id !== cloudSyncUser?.id) { cloudSyncReady = false; cloudFirstUploadShown = false; } cloudSyncUser = nextUser; if (!cloudSyncUser) { clearInterval(cloudPullTimer); cloudPullTimer = null; } updateCloudSyncButton(); if (cloudSyncUser) setTimeout(() => pullCloudSnapshot(), 0); });
 }
 const saveDataBeforeCloudSync = saveData;
-saveData = function() { saveDataBeforeCloudSync(); queueCloudSnapshot(); };
-window.addEventListener('online', () => { if (cloudSyncUser) pullCloudSnapshot(); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudSyncUser) pullCloudSnapshot(); });
+saveData = function() { cloudHasLocalChanges = true; saveDataBeforeCloudSync(); queueCloudSnapshot(); };
+window.addEventListener('online', () => { if (cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudSyncUser) pullCloudSnapshot({ quiet: true }); });
 
 function init() {
   // 设置日期默认值

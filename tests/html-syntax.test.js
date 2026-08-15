@@ -72,3 +72,12 @@ test("first cloud upload requires explicit device confirmation", async () => {
   assert.match(html, /getSession\(\)/);
   assert.match(html, /setTimeout\(\(\) => pullCloudSnapshot\(\), 0\)/);
 });
+
+test("cloud sync checks for updates while a device remains open", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /const CLOUD_PULL_INTERVAL_MS = 12000/);
+  assert.match(html, /function startCloudPolling\(\)/);
+  assert.match(html, /pullCloudSnapshot\(\{ quiet: true \}\)/);
+  assert.match(html, /cloudPullInFlight/);
+  assert.match(html, /cloudHasLocalChanges/);
+});
