@@ -30,6 +30,8 @@ test("mobile cloud login supports in-app verification", async () => {
   assert.match(html, /id="cloudMagicLink"/);
   assert.match(html, /id="cloudVerifyStep" style="display:block/);
   assert.match(html, /parseCloudEmailLoginLink\(pastedLink\)/);
+  assert.match(html, /isTrustedQqMailSafetyLink\(pastedLink\)/);
+  assert.match(html, /confirmQqMailSafetyNavigation\(pastedLink, email\)/);
   assert.match(html, /loginUrl\.searchParams\.values\(\)/);
   assert.match(html, /loginUrl\.hostname === expectedHost/);
   assert.match(html, /supabaseClient\.auth\.verifyOtp\(verifyArgs\)/);
@@ -48,6 +50,16 @@ test("QQ Mail safety wrapper reveals the Supabase sign-in link", async () => {
 
   assert.deepEqual(parseLink(qqWrappedLink), { token_hash: "test-token", type: "magiclink" });
   assert.equal(parseLink("https://example.com/?token_hash=test-token&type=magiclink"), null);
+});
+
+test("encrypted QQ Mail links are accepted only from the trusted safety page", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const functionSource = extractNamedFunction(html, "isTrustedQqMailSafetyLink");
+  const isTrustedLink = new Function(`${functionSource}; return isTrustedQqMailSafetyLink;`)();
+
+  assert.equal(isTrustedLink("https://wx.mail.qq.com/xmspamcheck/xmsafejump?func=1&key=encrypted"), true);
+  assert.equal(isTrustedLink("http://wx.mail.qq.com/xmspamcheck/xmsafejump?key=encrypted"), false);
+  assert.equal(isTrustedLink("https://wx.mail.qq.com.evil.example/xmspamcheck/xmsafejump?key=encrypted"), false);
 });
 
 test("first cloud upload requires explicit device confirmation", async () => {

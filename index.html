@@ -2630,13 +2630,31 @@ function parseCloudEmailLoginLink(rawLink) {
   }
   return null;
 }
+function isTrustedQqMailSafetyLink(rawLink) {
+  try {
+    const link = new URL(String(rawLink || '').trim());
+    return link.protocol === 'https:' && link.hostname === 'wx.mail.qq.com' && link.pathname === '/xmspamcheck/xmsafejump';
+  } catch (_) { return false; }
+}
+function confirmQqMailSafetyNavigation(pastedLink, email) {
+  document.getElementById('cloudQqConfirmModal')?.remove();
+  const confirmModal = document.createElement('div'); confirmModal.id = 'cloudQqConfirmModal';
+  confirmModal.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(45,32,27,.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+  confirmModal.innerHTML = '<div style="width:min(400px,100%);background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:19px;font-weight:700;margin-bottom:9px">通过 QQ 安全页继续验证</div><div style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:15px">这是 QQ 邮箱加密的安全跳转链接，生活台无法直接读取其中的登录信息。确认后将暂时打开 <b>wx.mail.qq.com</b>，由 QQ 转到 Supabase 完成一次性验证，然后返回生活台。你的本地记录不会被删除。</div><button id="cloudQqContinue" class="btn-primary" style="width:100%">确认，打开 QQ 验证页</button><button id="cloudQqCancel" class="btn-sm" style="width:100%;margin-top:10px">取消</button></div>';
+  document.body.appendChild(confirmModal);
+  document.getElementById('cloudQqCancel').onclick = () => confirmModal.remove();
+  document.getElementById('cloudQqContinue').onclick = () => {
+    localStorage.setItem(CLOUD_PENDING_EMAIL_KEY, email);
+    location.assign(pastedLink);
+  };
+}
 function openCloudSync() {
   document.getElementById('cloudSyncModal')?.remove();
   const modal = document.createElement('div'); modal.id = 'cloudSyncModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(45,32,27,.42);display:flex;align-items:center;justify-content:center;padding:20px;';
   const signedIn = !!cloudSyncUser;
   const signedInText = cloudSyncReady ? '已登录，此设备正在自动同步。' : '已登录，正在等待确认用哪台设备的数据建立云端记录。';
-  const loginForm = '<input id="cloudEmail" type="email" placeholder="你的常用邮箱" autocomplete="email" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:16px"><button id="cloudSignIn" class="btn-primary" style="width:100%;margin-top:12px">发送登录邮件</button><div id="cloudVerifyStep" style="display:block;margin-top:16px;padding-top:16px;border-top:1px solid #eadfd9"><div style="font-size:13px;color:#806f66;line-height:1.65;margin-bottom:10px">已有登录邮件可直接在这里验证：如果邮件里有验证码，请输入验证码；如果只有“Sign in”按钮，请长按按钮复制链接，再回到这里粘贴。</div><input id="cloudOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="邮件验证码（6–8位）" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:17px;letter-spacing:2px"><input id="cloudMagicLink" type="url" inputmode="url" placeholder="或粘贴邮件登录链接" style="box-sizing:border-box;width:100%;padding:11px;margin-top:9px;border:1px solid #e7d5cc;border-radius:10px;font-size:14px"><button id="cloudVerify" class="btn-primary" style="width:100%;margin-top:12px">验证并登录</button></div>';
+  const loginForm = '<input id="cloudEmail" type="email" placeholder="你的常用邮箱" autocomplete="email" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:16px"><button id="cloudSignIn" class="btn-primary" style="width:100%;margin-top:12px">发送登录邮件</button><div id="cloudVerifyStep" style="display:block;margin-top:16px;padding-top:16px;border-top:1px solid #eadfd9"><div style="font-size:13px;color:#806f66;line-height:1.65;margin-bottom:10px">已有登录邮件可直接在这里验证：如果邮件里有验证码，请输入验证码；如果只有“Sign in”按钮，请长按按钮复制链接，再回到这里粘贴。QQ 加密链接会先请你确认，再打开 QQ 安全页继续验证。</div><input id="cloudOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="邮件验证码（6–8位）" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #e7d5cc;border-radius:10px;font-size:17px;letter-spacing:2px"><input id="cloudMagicLink" type="url" inputmode="url" placeholder="或粘贴邮件登录链接" style="box-sizing:border-box;width:100%;padding:11px;margin-top:9px;border:1px solid #e7d5cc;border-radius:10px;font-size:14px"><button id="cloudVerify" class="btn-primary" style="width:100%;margin-top:12px">验证并登录</button></div>';
   modal.innerHTML = '<div style="width:min(420px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fffaf6;border-radius:18px;padding:22px;box-shadow:0 16px 45px rgba(45,32,27,.25)"><div style="font-size:20px;font-weight:700;margin-bottom:8px">☁️ 自动云同步</div><div id="cloudSyncHelp" style="font-size:14px;color:#806f66;line-height:1.7;margin-bottom:16px">' + (signedIn ? signedInText : '输入常用邮箱，在当前生活台内完成验证，即可同步手机、iPad 和电脑。') + '</div>' + (signedIn ? '<button id="cloudSignOut" class="btn-sm" style="width:100%">退出此设备</button>' : loginForm) + '<button id="cloudClose" class="btn-sm" style="width:100%;margin-top:10px">关闭</button></div>';
   document.body.appendChild(modal);
   document.getElementById('cloudClose').onclick = () => modal.remove();
@@ -2670,7 +2688,8 @@ function openCloudSync() {
       let verifyFallback = null;
       if (pastedLink) {
         verifyArgs = parseCloudEmailLoginLink(pastedLink);
-        if (!verifyArgs) { showToast('没有识别到登录信息，请重新长按“Sign in”复制链接'); return; }
+        if (!verifyArgs && isTrustedQqMailSafetyLink(pastedLink)) { confirmQqMailSafetyNavigation(pastedLink, email); return; }
+        if (!verifyArgs) { showToast('没有识别到登录信息，请重新复制最新邮件的链接'); return; }
         if (verifyArgs.type === 'magiclink') verifyFallback = { token_hash: verifyArgs.token_hash, type: 'email' };
       } else {
         if (!/^\d{6,8}$/.test(token)) { showToast('请输入邮件中的6–8位验证码'); return; }
