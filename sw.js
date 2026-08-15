@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-workbench-shell-v20260815-2';
+const CACHE_NAME = 'life-workbench-shell-v20260815-3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -21,6 +21,10 @@ self.addEventListener('activate', (event) => {
     await Promise.all(names.filter((name) => name.startsWith('life-workbench-shell-') && name !== CACHE_NAME).map((name) => caches.delete(name)));
     await self.clients.claim();
   })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
