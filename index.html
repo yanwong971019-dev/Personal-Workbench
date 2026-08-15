@@ -2575,6 +2575,7 @@ let cloudSyncReady = false;
 let cloudFirstUploadShown = false;
 const CLOUD_PENDING_EMAIL_KEY = 'cloud_sync_pending_email';
 const CLOUD_PULL_INTERVAL_MS = 12000;
+const CLOUD_READ_TIMEOUT_MS = 8000;
 
 function cloudSyncButton() { return document.getElementById('cloudSyncButton'); }
 function updateCloudSyncButton() {
@@ -2665,7 +2666,15 @@ function openCloudSync() {
   document.getElementById('cloudClose').onclick = () => modal.remove();
   if (signedIn) {
     const resumeButton = document.getElementById('cloudResumeFirstUpload');
-    if (resumeButton) resumeButton.onclick = async () => { modal.remove(); cloudFirstUploadShown = false; await pullCloudSnapshot(); };
+    if (resumeButton) resumeButton.onclick = async () => {
+      const help = document.getElementById('cloudSyncHelp');
+      resumeButton.disabled = true; resumeButton.textContent = '正在读取云端备份…';
+      if (help) help.textContent = '正在安全读取云端记录，不会覆盖这台设备的本地数据。';
+      cloudFirstUploadShown = false;
+      const success = await pullCloudSnapshot();
+      if (success) { modal.remove(); showToast('已读取云端最新记录'); }
+      else { resumeButton.disabled = false; resumeButton.textContent = '重新读取云端备份'; if (help) help.textContent = '暂时无法读取云端，请检查网络后重试。不会创建或覆盖云端备份。'; }
+    };
     document.getElementById('cloudSignOut').onclick = async () => { await supabaseClient.auth.signOut(); cloudSyncUser = null; cloudSyncReady = false; cloudFirstUploadShown = false; clearInterval(cloudPullTimer); cloudPullTimer = null; updateCloudSyncButton(); modal.remove(); showToast('已退出此设备'); };
   }
   else {
@@ -2757,7 +2766,11 @@ async function pullCloudSnapshot(options = {}) {
   if (!supabaseClient || !cloudSyncUser || cloudPullInFlight) return false;
   cloudPullInFlight = true;
   try {
-  const { data: row, error } = await supabaseClient.from(SUPABASE_SYNC_TABLE).select('payload').eq('user_id', cloudSyncUser.id).maybeSingle();
+  const readRequest = supabaseClient.from(SUPABASE_SYNC_TABLE).select('payload').eq('user_id', cloudSyncUser.id).maybeSingle();
+  const { data: row, error } = await Promise.race([
+    readRequest,
+    new Promise(resolve => setTimeout(() => resolve({ data: null, error: { message: '读取超时' } }), CLOUD_READ_TIMEOUT_MS)),
+  ]);
   if (error) { console.warn('云同步读取失败：', error.message); if (!quiet) showToast('云同步读取失败'); return false; }
   if (row && row.payload) {
     cloudSyncReady = true; cloudFirstUploadShown = false;

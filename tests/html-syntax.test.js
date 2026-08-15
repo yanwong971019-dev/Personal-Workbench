@@ -76,8 +76,10 @@ test("first cloud upload requires explicit device confirmation", async () => {
 test("cloud sync checks for updates while a device remains open", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /const CLOUD_PULL_INTERVAL_MS = 12000/);
+  assert.match(html, /const CLOUD_READ_TIMEOUT_MS = 8000/);
   assert.match(html, /function startCloudPolling\(\)/);
   assert.match(html, /pullCloudSnapshot\(\{ quiet: true \}\)/);
   assert.match(html, /cloudPullInFlight/);
   assert.match(html, /cloudHasLocalChanges/);
+  assert.match(html, /正在读取云端备份/);
 });
