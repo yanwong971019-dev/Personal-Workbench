@@ -608,7 +608,7 @@ tr:hover { background:var(--primary-bg); }
 </nav>
 <!-- 移动端更多菜单 -->
 <div id="mobileMoreMenu" style="display:none;position:fixed;bottom:70px;left:16px;right:16px;background:var(--card);border-radius:16px;padding:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);z-index:101;border:1px solid var(--border);" onclick="event.stopPropagation()">
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;font-size:12px;">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;font-size:12px;">
     <div style="padding:8px 4px;border-radius:12px;" onclick="manualSync();closeMobileMore()">
       <div style="font-size:22px;margin-bottom:4px">🔄</div>
       <div>同步</div>
@@ -628,6 +628,10 @@ tr:hover { background:var(--primary-bg); }
     <div style="padding:8px 4px;border-radius:12px;" onclick="showAISettings();closeMobileMore()">
       <div style="font-size:22px;margin-bottom:4px">🤖</div>
       <div>AI</div>
+    </div>
+    <div style="padding:8px 4px;border-radius:12px;" onclick="openCloudSync();closeMobileMore()">
+      <div style="font-size:22px;margin-bottom:4px">☁️</div>
+      <div>云同步</div>
     </div>
   </div>
 </div>
@@ -2604,6 +2608,7 @@ async function initCloudSync() {
   if (footer && !cloudSyncButton()) { const button = document.createElement('button'); button.id = 'cloudSyncButton'; button.className = 'btn-sm'; button.style.cssText = 'width:100%;margin:0 0 8px'; button.onclick = openCloudSync; footer.insertBefore(button, footer.firstChild); }
   const { data: { session } } = await supabaseClient.auth.getSession();
   cloudSyncUser = session?.user || null; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot();
+  else if (!localStorage.getItem('cloud_sync_prompt_seen')) { localStorage.setItem('cloud_sync_prompt_seen', '1'); setTimeout(openCloudSync, 700); }
   supabaseClient.auth.onAuthStateChange(async (_event, session) => { cloudSyncUser = session?.user || null; updateCloudSyncButton(); if (cloudSyncUser) await pullCloudSnapshot(); });
 }
 const saveDataBeforeCloudSync = saveData;
