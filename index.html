@@ -546,11 +546,11 @@ tr:hover { background:var(--primary-bg); }
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <input type="file" id="finPhotoInput" accept="image/*" style="display:none" onchange="handleFinPhoto(event)">
               <button class="btn outline" onclick="document.getElementById('finPhotoInput').click()">📷 拍照</button>
-              <button class="btn" id="finAIBtn" onclick="aiRecognizeFinance()" style="display:none">🤖 AI识别</button>
+              <button class="btn" id="finAIBtn" onclick="aiRecognizeFinance()" style="display:none">🤖 AI识别小票</button>
               <img id="finPhotoPreview" class="photo-preview" style="display:none" onclick="document.getElementById('finPhotoInput').click()">
               <button class="btn-danger" id="finPhotoClear" style="display:none" onclick="clearFinPhoto()">清除</button>
             </div>
-            <div id="finAIResult" style="font-size:13px;color:var(--primary);margin-top:4px"></div>
+            <div id="finAIResult" aria-live="polite" style="font-size:13px;color:var(--primary);margin-top:6px;line-height:1.55"></div>
           </div>
           <div class="form-group"><label>&nbsp;</label><button class="btn" onclick="addFinance()">添加</button></div>
         </div>
@@ -1218,8 +1218,17 @@ function handleFinPhoto(event) {
     const preview = document.getElementById('finPhotoPreview');
     preview.src = base64; preview.style.display = 'block';
     document.getElementById('finPhotoClear').style.display = 'inline-block';
-    document.getElementById('finAIBtn').style.display = isAIConfigured() ? 'inline-block' : 'none';
-    document.getElementById('finAIResult').textContent = '';
+    const aiBtn = document.getElementById('finAIBtn');
+    const resultEl = document.getElementById('finAIResult');
+    aiBtn.style.display = 'inline-block';
+    aiBtn.disabled = false;
+    aiBtn.textContent = isAIConfigured() ? '🤖 重新AI识别' : '🤖 配置AI识别';
+    if (isAIConfigured()) {
+      resultEl.textContent = '图片已准备，正在自动识别小票…';
+      setTimeout(() => aiRecognizeFinance(), 0);
+    } else {
+      resultEl.textContent = '图片已保留。请点击“配置AI识别”完成一次设置，之后上传小票会自动识别。';
+    }
   }, 1000, 0.72); // 控制请求体积，避免超过 Vercel 4.5MB 限制
 }
 
@@ -1361,11 +1370,16 @@ let aiResultContext = null; // 临时保存识别结果和上下文
 
 async function aiRecognizeFinance() {
   const serverUrl = getAIServerUrl();
-  if (!serverUrl) { showToast('请先在设置中配置AI服务地址'); return; }
+  if (!serverUrl || !getAIToken()) {
+    document.getElementById('finAIResult').textContent = '请先完成 AI 设置，保存后再点击“AI识别小票”。';
+    showAISettings();
+    return;
+  }
   if (!finPhotoData) { showToast('请先拍照'); return; }
   const btn = document.getElementById('finAIBtn');
   const resultEl = document.getElementById('finAIResult');
-  btn.disabled = true; btn.textContent = '🤖 识别中...'; resultEl.textContent = '';
+  btn.style.display = 'inline-block';
+  btn.disabled = true; btn.textContent = '🤖 识别中…'; resultEl.textContent = '';
   try {
     resultEl.textContent = '正在识别图片，请稍候…';
     const controller = new AbortController();
@@ -1424,7 +1438,7 @@ async function aiRecognizeFinance() {
     else if (err.message === 'Load failed') errMsg = '网络连接失败，请检查AI服务器地址是否正确、服务器是否在线';
     resultEl.textContent = '❌ ' + errMsg + '；你仍可手动填写。';
   } finally {
-    btn.disabled = false; btn.textContent = '🤖 AI识别';
+    btn.disabled = false; btn.textContent = '🤖 重新AI识别';
   }
 }
 
@@ -1565,7 +1579,15 @@ function showAISettings() {
     const token = document.getElementById('aiSettingsToken').value.trim();
     if (!url || !token) { showToast('请填写服务地址和访问密码'); return; }
     setAIServerUrl(url); setAIToken(token); modal.remove();
-    showToast('AI 服务已配置'); location.reload();
+    showToast('AI 服务已配置');
+    if (finPhotoData) {
+      document.getElementById('finAIBtn').style.display = 'inline-block';
+      document.getElementById('finAIResult').textContent = '设置已保存，正在自动识别刚才的小票…';
+      setTimeout(() => aiRecognizeFinance(), 0);
+    } else if (dietPhotoData) {
+      document.getElementById('dietAIBtn').style.display = 'inline-block';
+      setTimeout(() => aiRecognizeDiet(), 0);
+    }
   };
   return;
   const currentUrl = getAIServerUrl();

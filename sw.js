@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-workbench-shell-v20260815-3';
+const CACHE_NAME = 'life-workbench-shell-v20260816-4';
 const APP_SHELL = [
   './',
   './index.html',
