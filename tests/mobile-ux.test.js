@@ -47,5 +47,17 @@ test("PWA offers an explicit safe update action", async () => {
   assert.match(html, /registerAppServiceWorker\(\)/);
   assert.match(html, /不会清除本地记录或云端数据/);
   assert.match(worker, /event\.data\?\.type === 'SKIP_WAITING'/);
-  assert.match(worker, /life-workbench-shell-v20260815-3/);
+  assert.match(worker, /life-workbench-shell-v20260816-4/);
+});
+
+test("finance receipt upload keeps AI recognition visible and retries automatically", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /id="finAIBtn"[^>]*>🤖 AI识别小票<\/button>/);
+  assert.match(html, /aiBtn\.style\.display = 'inline-block'/);
+  assert.match(html, /setTimeout\(\(\) => aiRecognizeFinance\(\), 0\)/);
+  assert.match(html, /btn\.textContent = '🤖 重新AI识别'/);
+  assert.match(html, /showAISettings\(\)/);
+  assert.match(html, /id="finAIResult" aria-live="polite"/);
+  assert.match(html, /设置已保存，正在自动识别刚才的小票/);
+  assert.doesNotMatch(html, /showToast\('AI 服务已配置'\); location\.reload\(\)/);
 });
