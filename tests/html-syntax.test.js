@@ -151,20 +151,43 @@ test("postpartum starts only after a confirmed birth date", async () => {
   assert.equal(getInfo({ postpartumProfile: { birthDate: "2026-08-28" } }).daysPassed, 2);
 });
 
-test("postpartum coach blocks unsafe or unapproved training", async () => {
+test("postpartum coach limits early, anemic, or unapproved recovery to protective care", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const stageSource = extractNamedFunction(html, "getPostpartumCoachStage");
   const planSource = extractNamedFunction(html, "getRecommendedPostpartumPlan");
-  const library = [{ id: "safe", stage: "recovery", minutes: 5, targets: ["整体恢复"] }];
+  const library = [
+    { id: "protect", stage: "protect", minutes: 2, targets: ["整体恢复"] },
+    { id: "walk", stage: "recovery", minutes: 5, targets: ["整体恢复"] },
+  ];
   const createPlan = (data) => new Function(
     "data", "POSTPARTUM_EXERCISE_LIBRARY", "COACH_STAGE_RANK",
     `${stageSource}; ${planSource}; return getRecommendedPostpartumPlan;`,
-  )(data, library, { recovery: 0, base: 1, shape: 2 });
+  )(data, library, { protect: -1, recovery: 0, base: 1, shape: 2 });
   const info = { daysPassed: 20 };
 
-  assert.equal(createPlan({ postpartumProfile: { clearance: "light" } })(info, { safety: "symptoms", energy: "一般", minutes: 10 }).status, "blocked");
-  assert.equal(createPlan({ postpartumProfile: { clearance: "none" } })(info, { safety: "clear", energy: "一般", minutes: 10 }).status, "blocked");
-  assert.equal(createPlan({ postpartumProfile: { clearance: "light", bodyGoal: "整体恢复" } })(info, { safety: "clear", energy: "一般", minutes: 10 }).status, "ready");
+  const safeCheck = { safety: "clear", wound: "stable", lochia: "same", pain: 2, sleep: 5, energy: "一般", minutes: 10 };
+  assert.equal(createPlan({ postpartumProfile: { clearance: "light", anemiaStatus: "normal" } })(info, { ...safeCheck, safety: "symptoms" }).status, "blocked");
+  assert.equal(createPlan({ postpartumProfile: { clearance: "light", anemiaStatus: "normal" } })(info, { ...safeCheck, lochia: "increasing" }).status, "blocked");
+  assert.equal(createPlan({ postpartumProfile: { clearance: "light", anemiaStatus: "normal" } })(info, { ...safeCheck, wound: "unsure" }).status, "blocked");
+  const unapproved = createPlan({ postpartumProfile: { clearance: "none", anemiaStatus: "normal" } })(info, safeCheck);
+  assert.equal(unapproved.status, "ready");
+  assert.deepEqual(unapproved.items.map((item) => item.id), ["protect"]);
+  const anemic = createPlan({ postpartumProfile: { clearance: "light", anemiaStatus: "severe" } })(info, safeCheck);
+  assert.deepEqual(anemic.items.map((item) => item.id), ["protect"]);
+  assert.equal(createPlan({ postpartumProfile: { clearance: "light", anemiaStatus: "normal", bodyGoal: "整体恢复" } })(info, safeCheck).stage, "recovery");
+});
+
+test("postpartum nutrition removes pregnancy dieting advice and locks early calorie targets", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const nutritionSource = extractNamedFunction(html, "getPostpartumNutritionPlan");
+  const nutritionPlan = (data, info) => new Function(
+    "data", `${nutritionSource}; return getPostpartumNutritionPlan;`,
+  )(data)(info);
+  assert.equal(nutritionPlan({ postpartumProfile: { anemiaStatus: "severe" } }, { phase: "postpartum", daysPassed: 60 }).target, null);
+  assert.equal(nutritionPlan({ postpartumProfile: { anemiaStatus: "normal", feeding: "纯母乳" } }, { phase: "postpartum", daysPassed: 20 }).target, null);
+  assert.equal(nutritionPlan({ postpartumProfile: { anemiaStatus: "normal", feeding: "纯母乳" } }, { phase: "postpartum", daysPassed: 60 }).target, 2100);
+  assert.doesNotMatch(html, /孕晚期应少吃/);
+  assert.match(html, /恢复优先，不设减脂热量上限/);
 });
 
 test("new postpartum records support synced deletion", async () => {

@@ -1,7 +1,7 @@
 {
   "name": "个人生活工作台",
   "short_name": "工作台",
-  "description": "孕期生活、饮食、记账、运动综合管理",
+  "description": "孕期与产后恢复、饮食、记账、运动综合管理",
   "start_url": "/Personal-Workbench/",
   "display": "standalone",
   "background_color": "#FAF7F5",

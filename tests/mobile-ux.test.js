@@ -47,7 +47,7 @@ test("PWA offers an explicit safe update action", async () => {
   assert.match(html, /registerAppServiceWorker\(\)/);
   assert.match(html, /不会清除本地记录或云端数据/);
   assert.match(worker, /event\.data\?\.type === 'SKIP_WAITING'/);
-  assert.match(worker, /life-workbench-shell-v20260816-4/);
+  assert.match(worker, /life-workbench-shell-v\d{8}-\d+/);
 });
 
 test("finance receipt upload keeps AI recognition visible and retries automatically", async () => {
